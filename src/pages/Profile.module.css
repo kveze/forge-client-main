@@ -1,0 +1,254 @@
+.page { display: flex; flex-direction: column; min-height: 100vh; color: #F0EDE8; font-family: 'DM Sans', sans-serif; }
+
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.07);
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(13,13,13,0.96); backdrop-filter: blur(16px);
+}
+
+.logo { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 4px; cursor: pointer; }
+.logo span { color: #FF2D2D; }
+
+.headerRight { display: flex; gap: 8px; }
+
+.todayBtn {
+  padding: 7px 14px; background: rgba(255,45,45,0.1);
+  border: 1px solid rgba(255,45,45,0.25); border-radius: 100px;
+  color: #FF2D2D; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.todayBtn:hover { background: rgba(255,45,45,0.2); }
+
+.newPlanBtn {
+  padding: 7px 14px; background: #FF2D2D;
+  border: none; border-radius: 100px;
+  color: white; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: opacity 0.2s;
+}
+.newPlanBtn:hover { opacity: 0.9; }
+
+.body {
+  flex: 1; max-width: 640px; width: 100%;
+  margin: 0 auto; padding: 24px 20px 60px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+
+.center { flex: 1; display: flex; align-items: center; justify-content: center; padding: 80px 0; }
+
+.dots { display: flex; gap: 6px; }
+.dots span {
+  display: block; width: 7px; height: 7px;
+  background: #FF2D2D; border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.dots span:nth-child(2) { animation-delay: 0.2s; }
+.dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes pulse {
+  0%,100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Profile card */
+.profileCard {
+  display: flex; align-items: center; gap: 16px;
+  background: #141414; border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px; padding: 20px;
+}
+
+.avatar {
+  width: 52px; height: 52px;
+  background: #FF2D2D; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 800; color: white;
+  flex-shrink: 0;
+}
+
+.profileInfo { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+.profileEmail {
+  font-size: 13px; color: #888;
+  font-family: 'DM Mono', monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.profilePills { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.profilePill {
+  padding: 3px 10px; background: rgba(255,45,45,0.08);
+  border: 1px solid rgba(255,45,45,0.2); border-radius: 100px;
+  font-size: 11px; color: #FF2D2D; font-weight: 500;
+}
+
+.streakBadge {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  flex-shrink: 0;
+}
+
+.streakFire { font-size: 20px; }
+.streakNum { font-size: 22px; font-weight: 800; color: #FF2D2D; line-height: 1; }
+
+/* Data card */
+.dataCard {
+  background: #141414; border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px; padding: 20px;
+}
+
+.dataHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.cardTitle { font-size: 15px; font-weight: 700; }
+
+.editBtn {
+  padding: 6px 14px; background: transparent;
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 100px;
+  color: #888; font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.2s;
+}
+.editBtn:hover { border-color: rgba(255,255,255,0.2); color: #F0EDE8; }
+
+.dataGrid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.dataItem { display: flex; flex-direction: column; gap: 4px; }
+
+.dataLabel {
+  font-size: 10px; color: #555;
+  font-family: 'DM Mono', monospace; letter-spacing: 1px; text-transform: uppercase;
+}
+
+.dataVal {
+  font-size: 18px; font-weight: 700; color: #F0EDE8;
+}
+
+.dataVal span { font-size: 11px; color: #555; font-weight: 400; margin-left: 2px; }
+
+/* Edit form */
+.editGrid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.editField { display: flex; flex-direction: column; gap: 6px; }
+
+.editLabel {
+  font-size: 10px; color: #555;
+  font-family: 'DM Mono', monospace; letter-spacing: 1px; text-transform: uppercase;
+}
+
+.editInputWrap {
+  display: flex; align-items: center;
+  background: #1A1A1A; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.editInputWrap:focus-within { border-color: #FF2D2D; }
+
+.editInput {
+  flex: 1; background: transparent; border: none;
+  color: #F0EDE8; font-size: 16px; font-weight: 700;
+  padding: 10px 10px; outline: none; width: 100%;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.editUnit {
+  font-size: 10px; color: #444; padding: 0 8px;
+  font-family: 'DM Mono', monospace; white-space: nowrap;
+}
+
+.saveEditBtn {
+  grid-column: 1 / -1;
+  padding: 14px; background: #FF2D2D;
+  border: none; border-radius: 10px; color: white;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: opacity 0.2s; margin-top: 4px;
+}
+.saveEditBtn:hover { opacity: 0.9; }
+
+/* Plan card */
+.planCard {
+  background: #141414; border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px; overflow: hidden;
+}
+
+.planHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.planDate {
+  font-size: 11px; color: #555;
+  font-family: 'DM Mono', monospace;
+}
+
+.planTabs {
+  display: flex; border-bottom: 1px solid rgba(255,255,255,0.07);
+  overflow-x: auto; scrollbar-width: none;
+}
+.planTabs::-webkit-scrollbar { display: none; }
+
+.planTab {
+  padding: 12px 16px; background: transparent; border: none;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  color: #555; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  font-family: 'DM Sans', sans-serif;
+}
+.planTab:hover { color: #F0EDE8; }
+.planTabActive { color: #FF2D2D; border-bottom-color: #FF2D2D; }
+
+.planContent {
+  padding: 20px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; line-height: 1.9; color: #F0EDE8;
+}
+
+.planText { white-space: pre-wrap; }
+.dayHL { color: #FF2D2D; font-weight: 600; }
+
+.tipsList { display: flex; flex-direction: column; }
+.tipItem {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 12px; line-height: 1.7;
+}
+.tipItem:last-child { border-bottom: none; padding-bottom: 0; }
+.tipNum { font-size: 20px; font-weight: 800; color: #FF2D2D; flex-shrink: 0; line-height: 1; min-width: 22px; }
+
+.noContent { font-size: 12px; color: #555; text-align: center; padding: 20px 0; }
+
+/* Empty plan */
+.emptyPlan {
+  background: #141414; border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px; padding: 40px 20px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; gap: 10px;
+}
+
+.emptyIcon { font-size: 40px; }
+.emptyTitle { font-size: 18px; font-weight: 700; }
+.emptyText { font-size: 13px; color: #888; }
+
+.accentBtn {
+  padding: 12px 24px; background: #FF2D2D;
+  border: none; border-radius: 10px; color: white;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  margin-top: 8px; transition: opacity 0.2s;
+}
+.accentBtn:hover { opacity: 0.9; }
+
+/* Logout */
+.logoutBtn {
+  width: 100%; padding: 14px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.07); border-radius: 12px;
+  color: #555; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+  margin-top: 8px;
+}
+.logoutBtn:hover { border-color: #FF2D2D; color: #FF2D2D; }

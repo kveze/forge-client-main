@@ -1,0 +1,347 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255,45,45,0.10), transparent 40%),
+    radial-gradient(circle at 80% 100%, rgba(255,45,45,0.06), transparent 40%),
+    #0a0a0a;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px 80px;
+  gap: 48px;
+}
+
+/* HERO */
+.hero {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--red);
+  letter-spacing: 3px;
+}
+
+.headline {
+  font-family: var(--display);
+  font-size: 72px;
+  line-height: 0.88;
+  letter-spacing: 2px;
+  margin: 0;
+}
+
+.headline em {
+  color: var(--red);
+  font-style: normal;
+  text-shadow: 0 0 32px rgba(255,45,45,0.4);
+}
+
+.heroSub {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+  letter-spacing: 0.5px;
+}
+
+/* КАРТОЧКА */
+.card {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 36px 32px;
+  backdrop-filter: blur(10px);
+}
+
+/* UPLOAD */
+.uploadSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.fileInput { display: none; }
+
+.uploadBtn {
+  width: 100%;
+  padding: 40px;
+  border: 2px dashed rgba(255,255,255,0.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.01);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.uploadBtn:hover {
+  border-color: rgba(255,45,45,0.4);
+  color: var(--text);
+  background: rgba(255,45,45,0.03);
+}
+
+.uploadIcon {
+  font-size: 24px;
+  color: var(--red);
+}
+
+.photoPreview {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.previewImg {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.changePhoto {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+.changePhoto:hover { color: var(--text); }
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.btn {
+  width: 100%;
+  background: var(--red);
+  border: none;
+  color: #fff;
+  padding: 16px;
+  border-radius: 6px;
+  font-family: var(--display);
+  font-size: 18px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.btn:hover {
+  box-shadow: 0 8px 32px rgba(255,45,45,0.35);
+  transform: translateY(-1px);
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.ghostBtn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ghostBtn:hover { border-color: rgba(255,255,255,0.18); color: var(--text); }
+.ghostBtn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* РЕЗУЛЬТАТ */
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  animation: fadeUp 0.3s ease;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.photoSmall {
+  display: flex;
+  justify-content: center;
+}
+
+.previewImgSmall {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid var(--red);
+}
+
+.tipsMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 100px;
+  padding: 4px 12px;
+  text-transform: uppercase;
+}
+
+.priority {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--red);
+  letter-spacing: 1px;
+}
+
+.tipsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tipItem {
+  display: flex;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  align-items: flex-start;
+}
+.tipItem:last-child { border-bottom: none; }
+
+.tipNum {
+  font-family: var(--display);
+  font-size: 22px;
+  color: var(--red);
+  line-height: 1;
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.tipText {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text);
+  letter-spacing: 0.3px;
+  margin: 0;
+}
+
+.resultActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ДО/ПОСЛЕ */
+.transformResult {
+  width: 100%;
+  animation: fadeUp 0.3s ease;
+}
+
+.beforeAfter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.baItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.baLabel {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--muted);
+}
+
+.baLabelGreen {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: #4ade80;
+}
+
+.baImg {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* NO PLAN */
+.noPlan {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.7;
+}
+
+/* DISCLAIMER */
+.disclaimer {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: rgba(255,255,255,0.2);
+  text-align: center;
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* АДАПТИВ */
+@media (max-width: 600px) {
+  .headline { font-size: 52px; }
+  .card { padding: 28px 20px; border-radius: 0; border-left: none; border-right: none; }
+  .body { padding: 40px 0 60px; gap: 32px; }
+  .heroSub { font-size: 11px; }
+}
+
+@media (max-width: 390px) {
+  .headline { font-size: 42px; }
+}
