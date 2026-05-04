@@ -8,7 +8,6 @@ const api = axios.create({
   timeout: 30000
 })
 
-const API = import.meta.env.VITE_API_URL
 
 // 🔥 Трансформация с фиксом регистра
 const transformWorkoutData = (data) => ({
@@ -48,13 +47,8 @@ const transformRecoveryData = (data) => ({
 
 // 🔥 Возвращаем старый формат для совместимости
 export async function generatePlan(data, signal) {
-  const res = await fetch(`${API}/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-    signal // ← вот это
-  })
-  return res.json()
+  const response = await api.post('/generate', data, { signal })
+  return response.data
 }
 
 
