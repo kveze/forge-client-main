@@ -4,11 +4,25 @@ import styles from './PlanRenderer.module.css'
 // Модалка с YouTube
 function VideoModal({ exerciseName, onClose }) {
   const query = encodeURIComponent(`${exerciseName} упражнение техника`)
-  const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&maxResults=1&key=${import.meta.env.VITE_YOUTUBE_KEY}`
+const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&maxResults=1&videoDuration=short&key=${import.meta.env.VITE_YOUTUBE_KEY}`
   const [videoId, setVideoId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [videoUrl, setVideoUrl] = useState(null)
 
-  useState(() => {
+
+  useEffect(() => {
+  fetch(`${BACKEND}/exercise-video?name=${encodeURIComponent(exerciseName)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) setVideoUrl(data.data.url)
+      else fallbackToYoutube()
+    })
+    .catch(() => fallbackToYoutube())
+}, [])
+
+
+  const fallbackToYoutube = () => {
+   useState(() => {
     fetch(searchUrl)
       .then(r => r.json())
       .then(data => {
@@ -18,6 +32,8 @@ function VideoModal({ exerciseName, onClose }) {
       .catch(() => setVideoId(null))
       .finally(() => setLoading(false))
   }, [])
+
+}
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
