@@ -75,9 +75,13 @@
 .profilePills { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .profilePill {
-  padding: 3px 10px; background: rgba(255,45,45,0.08);
-  border: 1px solid rgba(255,45,45,0.2); border-radius: 100px;
-  font-size: 11px; color: #FF2D2D; font-weight: 500;
+padding: 3px 10px;
+    background: rgba(255, 45, 45, 0.08);
+    border: 1px solid rgba(255, 45, 45, 0.2);
+    border-radius: 8px;
+    font-size: 13px;
+    color: #ff7e7e;
+    font-weight: 500;
 }
 
 .streakBadge {
@@ -252,3 +256,97 @@
   margin-top: 8px;
 }
 .logoutBtn:hover { border-color: #FF2D2D; color: #FF2D2D; }
+.btnRow { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.chip {
+  padding: 7px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #888; font-size: 13px;
+  cursor: pointer; transition: all 0.2s;
+}
+.chip:hover { border-color: rgba(255,255,255,0.15); color: #F0EDE8; }
+.chipActive { border-color: #FF2D2D; color: #F0EDE8; background: rgba(255,45,45,0.08); }
+/* Добавь в конец Profile.module.css */
+
+.editInputError {
+  border-color: #FF2D2D !important;
+}
+
+.editError {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: #FF2D2D;
+  margin-top: 4px;
+  animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.btnRow { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.chip {
+  padding: 7px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #888; font-size: 13px;
+  cursor: pointer; transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+}
+.chip:hover { border-color: rgba(255,255,255,0.15); color: #F0EDE8; }
+.chipActive { border-color: #FF2D2D; color: #F0EDE8; background: rgba(255,45,45,0.08); }
+
+/* Модалка пересоздания плана */
+.modalOverlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(6px);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.replanModal {
+  background: #141414;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px; padding: 32px 28px;
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center; gap: 12px;
+  max-width: 360px; width: 90%;
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.replanIcon { font-size: 40px; }
+.replanTitle { font-size: 18px; font-weight: 700; }
+.replanText { font-size: 13px; color: #888; }
+
+.replanBtns { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 8px; }
+
+.replanYes {
+  width: 100%; padding: 14px; background: #FF2D2D;
+  border: none; border-radius: 10px; color: white;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: opacity 0.2s; font-family: 'DM Sans', sans-serif;
+}
+.replanYes:hover { opacity: 0.9; }
+
+.replanNo {
+  width: 100%; padding: 12px; background: transparent;
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+  color: #666; font-size: 13px; cursor: pointer;
+  transition: all 0.2s; font-family: 'DM Sans', sans-serif;
+}
+.replanNo:hover { border-color: rgba(255,255,255,0.15); color: #F0EDE8; }

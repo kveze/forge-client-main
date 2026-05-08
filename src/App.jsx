@@ -7,6 +7,9 @@ import PrivateRoute from './components/PrivateRoute'
 import Today from './pages/Today'
 import Profile from './pages/Profile'
 import LooksMaxTip from './pages/LooksMaxTip'
+import Chat from './pages/Chat'
+
+// добавь роут (без PrivateRoute — анонимы тоже могут):
 
 
 export default function App() {
@@ -19,6 +22,7 @@ export default function App() {
       <Route path="/looksmax" element={<PrivateRoute><LooksMaxTip /></PrivateRoute>} />
       <Route path="/today" element={<PrivateRoute><Today /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+      <Route path="/chat" element={<Chat />} />
     </Routes>
   )
 }

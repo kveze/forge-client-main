@@ -131,10 +131,11 @@ const payload = {
     
     // 🔥 Извлекаем план из новой структуры
     const generatedPlan = res.success ? res.data.plan || res.data.week_plan : res.plan
-    setPlan(generatedPlan)
-    setView('plan')
-
-    setShowBanner(!user)
+localStorage.setItem('forge_pending', JSON.stringify({
+  form: payload,
+  plan: generatedPlan
+}))
+navigate('/chat')
     
     if (user) {
       setLoadingWellness(true)

@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import styles from './Header.module.css'
@@ -5,12 +6,11 @@ import styles from './Header.module.css'
 export default function Header({ variant = 'default' }) {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
 
-  // 🔥 Конфигурация кнопок для разных страниц
   const variants = {
-    // Главная (лендинг)
     landing: {
-      left: null,
       right: [
         { label: 'Мой профиль', to: '/profile', show: !!user },
         { label: 'Войти', to: '/login', show: !user },
@@ -18,57 +18,72 @@ export default function Header({ variant = 'default' }) {
         { label: 'Создать план', to: '/generate', show: true, accent: true },
       ]
     },
-    
-    // Генератор плана
     generate: {
-      left: null,
       right: [
         { label: 'Мой профиль', to: '/profile', show: true },
       ]
     },
-    
-    // Сегодняшняя тренировка
     today: {
-      left: null,
       right: [
         { label: 'Мой профиль', to: '/profile', show: true },
         { label: 'Новый план', to: '/generate', show: true, accent: true },
       ]
     },
-    
-    // Профиль
     profile: {
       right: [
         { label: '🔥 Сегодня', to: '/today', show: true },
-        { label: '+ Новый план', to: '/generate', show: true, accent: true},
-        { label: '💎 LooksMax', to: '/looksmax', show: true},
-      ],
-      left: null
+        { label: '+ Новый план', to: '/generate', show: true, accent: true },
+        { label: '💬 Тренер', to: '/chat', show: true, accent: true },
+        { label: '💎 LooksMax', to: '/looksmax', show: true },
+      ]
     },
-    
-    // По умолчанию
+    chat: {
+  right: [
+    { label: 'Профиль', to: '/profile', show: !!user },
+    { label: '+ Новый план', to: '/generate', show: !!user, accent: true },
+    { label: '💎 LooksMax', to: '/looksmax', show: !!user },
+    { label: 'Войти', to: '/login', show: !user },
+    { label: 'Регистрация', to: '/register', show: !user, accent: true },
+  ]
+},
     default: {
-      left: null,
       right: [
         { label: 'Мой профиль', to: '/profile', show: !!user },
         { label: 'Войти', to: '/login', show: !user },
-
       ]
     }
   }
 
   const config = variants[variant] || variants.default
+  const buttons = config.right?.filter(btn => btn.show) || []
+
+  // Закрываем меню при клике вне
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false)
+      }
+    }
+    if (menuOpen) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [menuOpen])
+
+  const handleNav = (to) => {
+    setMenuOpen(false)
+    navigate(to)
+  }
 
   return (
     <header className={styles.header}>
       <div className={styles.logo} onClick={() => navigate('/')}>
         FOR<span>G</span>E
       </div>
-      
-      <div className={styles.left}>
-        {config.left?.filter(btn => btn.show).map((btn, i) => (
-          <button 
-            key={i} 
+
+      {/* Desktop кнопки */}
+      <div className={styles.right}>
+        {buttons.map((btn, i) => (
+          <button
+            key={i}
             className={btn.accent ? styles.accentBtn : styles.ghostBtn}
             onClick={() => navigate(btn.to)}
           >
@@ -76,17 +91,35 @@ export default function Header({ variant = 'default' }) {
           </button>
         ))}
       </div>
-      
-      <div className={styles.right}>
-        {config.right?.filter(btn => btn.show).map((btn, i) => (
-          <button 
-            key={i} 
-            className={btn.accent ? styles.accentBtn : styles.ghostBtn}
-            onClick={() => navigate(btn.to)}
-          >
-            {btn.label}
-          </button>
-        ))}
+
+      {/* Бургер — только мобилка */}
+      <div ref={menuRef} className={styles.burgerWrap}>
+        <button
+          className={`${styles.burger} ${menuOpen ? styles.burgerOpen : ''}`}
+          onClick={() => setMenuOpen(o => !o)}
+          aria-label="Меню"
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+
+        {menuOpen && (
+          <>
+            <div className={styles.overlay} onClick={() => setMenuOpen(false)} />
+            <div className={styles.mobileMenu}>
+              {buttons.map((btn, i) => (
+                <button
+                  key={i}
+                  className={btn.accent ? styles.mobileAccentBtn : styles.mobileBtn}
+                  onClick={() => handleNav(btn.to)}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </header>
   )
