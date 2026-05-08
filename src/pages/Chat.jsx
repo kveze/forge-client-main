@@ -181,7 +181,8 @@ function TodaySplash({ day, streak, todayDone, onDone, onClose }) {
 }
 
 
-function PlanInMessage({ plan }) {
+function PlanInMessage({ plan, tips, recovery }) {
+  const [activeTab, setActiveTab] = useState('plan')
   const [activeDay, setActiveDay] = useState(0)
   const [activeVideo, setActiveVideo] = useState(null)
   const days = Array.isArray(plan) ? plan : plan?.week_plan
@@ -192,38 +193,74 @@ function PlanInMessage({ plan }) {
     <div className={styles.planCard}>
       {activeVideo && <VideoModal exerciseName={activeVideo} onClose={() => setActiveVideo(null)} />}
       <div className={styles.planCardTitle}>// ТВОЙ ПЛАН</div>
-      <div className={styles.planTabs}>
-        {days.map((d, i) => (
-          <button key={i}
-            className={`${styles.planTab} ${activeDay === i ? styles.planTabActive : ''}`}
-            onClick={() => setActiveDay(i)}
-          >
-            <span className={styles.planTabDay}>День {d.day}</span>
-            <span className={styles.planTabFocus}>{d.focus?.split('/')[0]}</span>
-          </button>
+
+      {/* Главные табы */}
+      <div className={styles.planMainTabs}>
+        {[['plan','Тренировки'],['tips','Питание'],['recovery','Восстановление']].map(([key, label]) => (
+          <button key={key}
+            className={`${styles.planMainTab} ${activeTab === key ? styles.planMainTabActive : ''}`}
+            onClick={() => setActiveTab(key)}
+          >{label}</button>
         ))}
       </div>
-      <div className={styles.planContent}>
-        <div className={styles.planFocus}>{day.focus}</div>
-        {day.exercises?.map((ex, i) => (
-          <div key={i} className={styles.planEx}>
-            <div className={styles.planExTop}>
-              <div className={styles.planExName}>{ex.name}</div>
-              <button className={styles.planWatchBtn} onClick={() => setActiveVideo(ex.name)}>▶ КАК ДЕЛАТЬ</button>
-            </div>
-            <div className={styles.planExMeta}>
-              <span>↻ {ex.sets} подх.</span>
-              <span>✕ {ex.reps}</span>
-              <span>◷ {ex.rest_sec}с</span>
-            </div>
-            {ex.notes && <div className={styles.planExNotes}>→ {ex.notes}</div>}
+
+      {activeTab === 'plan' && (
+        <>
+          <div className={styles.planTabs}>
+            {days.map((d, i) => (
+              <button key={i}
+                className={`${styles.planTab} ${activeDay === i ? styles.planTabActive : ''}`}
+                onClick={() => setActiveDay(i)}
+              >
+                <span className={styles.planTabDay}>День {d.day}</span>
+                <span className={styles.planTabFocus}>{d.focus?.split('/')[0]}</span>
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
+          <div className={styles.planContent}>
+            <div className={styles.planFocus}>{day.focus}</div>
+            {day.exercises?.map((ex, i) => (
+              <div key={i} className={styles.planEx}>
+                <div className={styles.planExTop}>
+                  <div className={styles.planExName}>{ex.name}</div>
+                  <button className={styles.planWatchBtn} onClick={() => setActiveVideo(ex.name)}>▶ КАК ДЕЛАТЬ</button>
+                </div>
+                <div className={styles.planExMeta}>
+                  <span>↻ {ex.sets} подх.</span>
+                  <span>✕ {ex.reps}</span>
+                  <span>◷ {ex.rest_sec}с</span>
+                </div>
+                {ex.notes && <div className={styles.planExNotes}>→ {ex.notes}</div>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'tips' && (
+        <div className={styles.planContent}>
+          {tips?.length ? tips.map((tip, i) => (
+            <div key={i} className={styles.tipItem}>
+              <span className={styles.tipNum}>{i + 1}</span>
+              <span>{tip}</span>
+            </div>
+          )) : <div className={styles.planFocus}>Нет данных</div>}
+        </div>
+      )}
+
+      {activeTab === 'recovery' && (
+        <div className={styles.planContent}>
+          {recovery?.length ? recovery.map((tip, i) => (
+            <div key={i} className={styles.tipItem}>
+              <span className={styles.tipNum}>{i + 1}</span>
+              <span>{tip}</span>
+            </div>
+          )) : <div className={styles.planFocus}>Нет данных</div>}
+        </div>
+      )}
     </div>
   )
 }
-
 export default function Chat() {
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
@@ -399,7 +436,7 @@ export default function Chat() {
           plan: currentPlan?.plan || null
         })
       })
-
+console.log('form:', currentPlan?.form)
       const data = await res.json()
       let reply = data.choices?.[0]?.message?.content || ''
       let newPlan = data.plan || null
@@ -490,7 +527,7 @@ export default function Chat() {
             {msg.role === 'assistant' && <div className={styles.msgAvatar}>F</div>}
             <div className={styles.msgBubble}>
               {msg.content && <div className={styles.msgText}>{msg.content}</div>}
-              {msg.plan && <PlanInMessage plan={msg.plan} />}
+              {msg.plan && <PlanInMessage plan={msg.plan} tips={planData?.tips} recovery={planData?.recovery} />}
               <div className={styles.msgTime}>
                 {new Date(msg.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
               </div>

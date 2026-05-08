@@ -797,4 +797,47 @@
   .splashStreakNum { font-size: 80px; }
   .splashFireBig { font-size: 64px; }
   .splashDoneBtn { padding: 16px; font-size: 15px; }
+
+
+}
+.planMainTabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.planMainTab {
+  flex: 1;
+  padding: 11px 8px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: #555;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.planMainTab:hover { color: #F0EDE8; }
+.planMainTabActive { color: #FF2D2D; border-bottom-color: #FF2D2D; }
+
+.tipItem {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 13px;
+  line-height: 1.6;
+  color: #D8D5D0;
+}
+.tipItem:last-child { border-bottom: none; }
+.tipNum {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  color: #FF2D2D;
+  flex-shrink: 0;
+  line-height: 1;
+  min-width: 20px;
 }
