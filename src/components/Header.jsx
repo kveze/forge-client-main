@@ -25,7 +25,6 @@ const VARIANTS = {
   },
   profile: {
     right: [
-      { label: '🔥 Сегодня', to: '/today', show: () => true },
       { label: '+ Новый план', to: '/generate', show: () => true, accent: true },
       { label: '💬 Тренер', to: '/chat', show: () => true, accent: true },
       { label: '💎 LooksMax', to: '/looksmax', show: () => true },
