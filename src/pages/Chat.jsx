@@ -368,6 +368,19 @@ export default function Chat() {
       }
 
       if (user) {
+        const migrated = localStorage.getItem('forge_chat_migrate')
+        if (migrated) {
+          localStorage.removeItem('forge_chat_migrate')
+          try {
+            const migratedMsgs = JSON.parse(migrated)
+            if (migratedMsgs.length > 0) {
+              setMessages(migratedMsgs)
+              await setDoc(doc(db, 'chats', user.uid), { messages: migratedMsgs }, { merge: true })
+              return
+            }
+          } catch {}
+        }
+
         const [planSnap, chatSnap, streakSnap] = await Promise.all([
           getDoc(doc(db, 'plans', user.uid)),
           getDoc(doc(db, 'chats', user.uid)),
