@@ -1,39 +1,41 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import styles from './PlanRenderer.module.css'
 
-// Модалка с YouTube
 function VideoModal({ exerciseName, onClose }) {
-  const query = encodeURIComponent(`${exerciseName} упражнение техника`)
-const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&maxResults=1&videoDuration=short&key=${import.meta.env.VITE_YOUTUBE_KEY}`
   const [videoId, setVideoId] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [videoUrl, setVideoUrl] = useState(null)
-
+  const KEY = import.meta.env.VITE_YOUTUBE_KEY
 
   useEffect(() => {
-  fetch(`${BACKEND}/exercise-video?name=${encodeURIComponent(exerciseName)}`)
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) setVideoUrl(data.data.url)
-      else fallbackToYoutube()
-    })
-    .catch(() => fallbackToYoutube())
-}, [])
+    const query = encodeURIComponent(`${exerciseName} техника выполнения`)
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&maxResults=5&videoDuration=short&key=${KEY}`
 
-
-  const fallbackToYoutube = () => {
-   useState(() => {
     fetch(searchUrl)
       .then(r => r.json())
-      .then(data => {
-        const id = data.items?.[0]?.id?.videoId
-        setVideoId(id || null)
+      .then(async data => {
+        const items = data.items || []
+        if (!items.length) { setVideoId(null); return }
+
+        // Берём IDs и проверяем длительность
+        const ids = items.map(i => i.id.videoId).join(',')
+        const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${KEY}`
+        const detailRes = await fetch(detailUrl).then(r => r.json())
+
+        // Ищем видео до 90 секунд
+        const short = detailRes.items?.find(v => {
+          const dur = v.contentDetails.duration
+          const match = dur.match(/PT(?:(\d+)M)?(?:(\d+)S)?/)
+          const mins = parseInt(match?.[1] || 0)
+          const secs = parseInt(match?.[2] || 0)
+          return mins === 0 && secs <= 90
+        })
+
+        // Если не нашли короткое — берём первое
+        setVideoId(short?.id || items[0]?.id?.videoId || null)
       })
       .catch(() => setVideoId(null))
       .finally(() => setLoading(false))
   }, [])
-
-}
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
@@ -59,6 +61,7 @@ const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=$
   )
 }
 
+
 function DayView({ day }) {
   const [activeVideo, setActiveVideo] = useState(null)
 
@@ -73,10 +76,7 @@ function DayView({ day }) {
           <div key={i} className={styles.exerciseCard}>
             <div className={styles.exerciseTop}>
               <div className={styles.exerciseName}>{ex.name}</div>
-              <button
-                className={styles.watchBtn}
-                onClick={() => setActiveVideo(ex.name)}
-              >
+              <button className={styles.watchBtn} onClick={() => setActiveVideo(ex.name)}>
                 ▶ КАК ДЕЛАТЬ
               </button>
             </div>
@@ -109,8 +109,10 @@ function DayView({ day }) {
 
 export default function PlanRenderer({ plan }) {
   const [activeDay, setActiveDay] = useState(0)
+
   if (!plan) return null
   if (typeof plan === 'string') return <div className={styles.planText}>{plan}</div>
+
   const days = Array.isArray(plan) ? plan : plan.week_plan
   if (!days) return <div className={styles.planText}>{JSON.stringify(plan, null, 2)}</div>
 

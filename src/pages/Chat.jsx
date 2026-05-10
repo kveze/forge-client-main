@@ -8,8 +8,8 @@ import Header from '../components/Header'
 
 const FREE_LIMIT = 3
 const BACKEND = 'https://forge-go-production.up.railway.app'
-const DAYS_RU = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота']
-const DAYS_PLAN = ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье']
+const DAYS_RU = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
+const DAYS_PLAN = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
 
 function getTodayPlan(plan) {
   if (!plan) return null
@@ -29,28 +29,45 @@ function calcStreak(dates) {
   if (sorted[0] !== today && sorted[0] !== yesterday) return 0
   let streak = 1
   for (let i = 1; i < sorted.length; i++) {
-    const diff = (new Date(sorted[i-1]) - new Date(sorted[i])) / 86400000
+    const diff = (new Date(sorted[i - 1]) - new Date(sorted[i])) / 86400000
     if (diff === 1) streak++
     else break
   }
   return streak
 }
 
-// ═══════════════════════════════
-// TODAY SPLASH — полноэкранный оверлей
-// ═══════════════════════════════
-// Замени VideoModal и TodaySplash в Chat.jsx на этот код:
-
 function VideoModal({ exerciseName, onClose }) {
-  const query = encodeURIComponent(`${exerciseName} упражнение техника`)
-  const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&maxResults=1&videoDuration=short&key=${import.meta.env.VITE_YOUTUBE_KEY}`
   const [videoId, setVideoId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const KEY = import.meta.env.VITE_YOUTUBE_KEY
 
-  useState(() => {
+  useEffect(() => {
+    const query = encodeURIComponent(`${exerciseName} техника выполнения`)
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&maxResults=5&videoDuration=short&key=${KEY}`
+
     fetch(searchUrl)
       .then(r => r.json())
-      .then(data => { setVideoId(data.items?.[0]?.id?.videoId || null) })
+      .then(async data => {
+        const items = data.items || []
+        if (!items.length) { setVideoId(null); return }
+
+        // Берём IDs и проверяем длительность
+        const ids = items.map(i => i.id.videoId).join(',')
+        const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${KEY}`
+        const detailRes = await fetch(detailUrl).then(r => r.json())
+
+        // Ищем видео до 90 секунд
+        const short = detailRes.items?.find(v => {
+          const dur = v.contentDetails.duration
+          const match = dur.match(/PT(?:(\d+)M)?(?:(\d+)S)?/)
+          const mins = parseInt(match?.[1] || 0)
+          const secs = parseInt(match?.[2] || 0)
+          return mins === 0 && secs <= 90
+        })
+
+        // Если не нашли короткое — берём первое
+        setVideoId(short?.id || items[0]?.id?.videoId || null)
+      })
       .catch(() => setVideoId(null))
       .finally(() => setLoading(false))
   }, [])
@@ -66,15 +83,19 @@ function VideoModal({ exerciseName, onClose }) {
           {loading && <div className={styles.modalLoading}>// ЗАГРУЗКА...</div>}
           {!loading && !videoId && <div className={styles.modalLoading}>// ВИДЕО НЕ НАЙДЕНО</div>}
           {!loading && videoId && (
-            <iframe className={styles.videoFrame}
+            <iframe
+              className={styles.videoFrame}
               src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
-              allow="autoplay; encrypted-media" allowFullScreen />
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+            />
           )}
         </div>
       </div>
     </div>
   )
 }
+
 
 function TodaySplash({ day, streak, todayDone, onDone, onClose }) {
   const [canDone, setCanDone] = useState(false)
@@ -180,13 +201,14 @@ function TodaySplash({ day, streak, todayDone, onDone, onClose }) {
   )
 }
 
-
 function PlanInMessage({ plan, tips, recovery }) {
   const [activeTab, setActiveTab] = useState('plan')
   const [activeDay, setActiveDay] = useState(0)
   const [activeVideo, setActiveVideo] = useState(null)
+
   const days = Array.isArray(plan) ? plan : plan?.week_plan
   if (!days?.length) return null
+
   const day = days[activeDay]
 
   return (
@@ -194,13 +216,15 @@ function PlanInMessage({ plan, tips, recovery }) {
       {activeVideo && <VideoModal exerciseName={activeVideo} onClose={() => setActiveVideo(null)} />}
       <div className={styles.planCardTitle}>// ТВОЙ ПЛАН</div>
 
-      {/* Главные табы */}
       <div className={styles.planMainTabs}>
-        {[['plan','Тренировки'],['tips','Питание'],['recovery','Восстановление']].map(([key, label]) => (
-          <button key={key}
+        {[['plan', 'Тренировки'], ['tips', 'Питание'], ['recovery', 'Восстановление']].map(([key, label]) => (
+          <button
+            key={key}
             className={`${styles.planMainTab} ${activeTab === key ? styles.planMainTabActive : ''}`}
             onClick={() => setActiveTab(key)}
-          >{label}</button>
+          >
+            {label}
+          </button>
         ))}
       </div>
 
@@ -208,7 +232,8 @@ function PlanInMessage({ plan, tips, recovery }) {
         <>
           <div className={styles.planTabs}>
             {days.map((d, i) => (
-              <button key={i}
+              <button
+                key={i}
                 className={`${styles.planTab} ${activeDay === i ? styles.planTabActive : ''}`}
                 onClick={() => setActiveDay(i)}
               >
@@ -223,7 +248,9 @@ function PlanInMessage({ plan, tips, recovery }) {
               <div key={i} className={styles.planEx}>
                 <div className={styles.planExTop}>
                   <div className={styles.planExName}>{ex.name}</div>
-                  <button className={styles.planWatchBtn} onClick={() => setActiveVideo(ex.name)}>▶ КАК ДЕЛАТЬ</button>
+                  <button className={styles.planWatchBtn} onClick={() => setActiveVideo(ex.name)}>
+                    ▶ КАК ДЕЛАТЬ
+                  </button>
                 </div>
                 <div className={styles.planExMeta}>
                   <span>↻ {ex.sets} подх.</span>
@@ -261,6 +288,7 @@ function PlanInMessage({ plan, tips, recovery }) {
     </div>
   )
 }
+
 export default function Chat() {
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
@@ -303,8 +331,19 @@ export default function Chat() {
               plan: pd.plan, form: pd.form, createdAt: new Date().toISOString()
             })
             Promise.all([
-              fetch(`${BACKEND}/tips`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gender: pd.form.gender, age: pd.form.age, weight: pd.form.weight, goal: pd.form.goal, level: pd.form.level, plan: JSON.stringify(pd.plan) }) }).then(r => r.json()),
-              fetch(`${BACKEND}/recovery`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ age: pd.form.age, goal: pd.form.goal, level: pd.form.level }) }).then(r => r.json())
+              fetch(`${BACKEND}/tips`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  gender: pd.form.gender, age: pd.form.age, weight: pd.form.weight,
+                  goal: pd.form.goal, level: pd.form.level, plan: JSON.stringify(pd.plan)
+                })
+              }).then(r => r.json()),
+              fetch(`${BACKEND}/recovery`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ age: pd.form.age, goal: pd.form.goal, level: pd.form.level })
+              }).then(r => r.json())
             ]).then(([tipsRes, recoveryRes]) => {
               const updatedPd = { ...pd, tips: tipsRes.data?.tips, recovery: recoveryRes.data?.tips }
               planDataRef.current = updatedPd
@@ -350,7 +389,6 @@ export default function Chat() {
           planDataRef.current = planSnap.data()
           setPlanData(planSnap.data())
 
-          // Показываем сплеш если есть план
           const todayDay = getTodayPlan(planSnap.data().plan)
           if (todayDay) {
             setTodayWorkout(todayDay)
@@ -436,7 +474,7 @@ export default function Chat() {
           plan: currentPlan?.plan || null
         })
       })
-console.log('form:', currentPlan?.form)
+
       const data = await res.json()
       let reply = data.choices?.[0]?.message?.content || ''
       let newPlan = data.plan || null
@@ -474,7 +512,11 @@ console.log('form:', currentPlan?.form)
       }
     } catch (e) {
       console.error(e)
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Ошибка соединения. Попробуй ещё раз.', timestamp: Date.now() }])
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Ошибка соединения. Попробуй ещё раз.',
+        timestamp: Date.now()
+      }])
     } finally {
       setLoading(false)
       inputRef.current?.focus()
@@ -488,7 +530,7 @@ console.log('form:', currentPlan?.form)
 
   if (authLoading || !initialized) return (
     <div className={styles.loadingPage}>
-      <div className={styles.dots}><span/><span/><span/></div>
+      <div className={styles.dots}><span /><span /><span /></div>
     </div>
   )
 
@@ -496,7 +538,6 @@ console.log('form:', currentPlan?.form)
     <div className={styles.page}>
       <Header variant="chat" />
 
-      {/* TODAY SPLASH */}
       {showSplash && todayWorkout && (
         <TodaySplash
           day={todayWorkout}
@@ -539,7 +580,7 @@ console.log('form:', currentPlan?.form)
           <div className={`${styles.msg} ${styles.msgAssistant}`}>
             <div className={styles.msgAvatar}>F</div>
             <div className={styles.msgBubble}>
-              <div className={styles.typing}><span/><span/><span/></div>
+              <div className={styles.typing}><span /><span /><span /></div>
             </div>
           </div>
         )}
@@ -551,7 +592,7 @@ console.log('form:', currentPlan?.form)
               <div className={styles.paywallTitle}>Продолжи с аккаунтом</div>
               <div className={styles.paywallText}>Регистрация бесплатная</div>
               <div className={styles.paywallPerks}>
-                {['Безлимитный чат','Тренер помнит историю','Персональный план','Советы по питанию','Анализ фото'].map(p => (
+                {['Безлимитный чат', 'Тренер помнит историю', 'Персональный план', 'Советы по питанию', 'Анализ фото'].map(p => (
                   <div key={p} className={styles.perk}>✓ {p}</div>
                 ))}
               </div>
@@ -584,9 +625,18 @@ console.log('form:', currentPlan?.form)
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
               rows={1}
-              onInput={e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px' }}
+              onInput={e => {
+                e.target.style.height = 'auto'
+                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px'
+              }}
             />
-            <button className={styles.sendBtn} onClick={() => sendMessage()} disabled={loading || !input.trim()}>→</button>
+            <button
+              className={styles.sendBtn}
+              onClick={() => sendMessage()}
+              disabled={loading || !input.trim()}
+            >
+              →
+            </button>
           </div>
         </div>
       )}

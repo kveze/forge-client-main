@@ -7,10 +7,41 @@ import styles from './Today.module.css'
 import Header from '../components/Header'
 import PlanRenderer from '../components/PlanRenderer'
 
+function calculateTodayWorkout(data) {
+  if (!data?.plan) return null
+
+  if (!data.lastWorkoutDate) {
+    return { day: 1, isRest: false, reason: 'Погнали!' }
+  }
+
+  const last = new Date(data.lastWorkoutDate)
+  const now = new Date()
+  const daysSince = Math.floor((now - last) / 86400000)
+
+  if (daysSince < 2) {
+    return {
+      isRest: true,
+      reason: 'Восстановление',
+      nextWorkout: new Date(last.getTime() + 2 * 86400000).toLocaleDateString('ru-RU', {
+        day: 'numeric', month: 'short'
+      })
+    }
+  }
+
+  const nextDay = data.nextWorkoutDay || 1
+  const actualDay = nextDay > 3 ? 1 : nextDay
+
+  return {
+    day: actualDay,
+    isRest: false,
+    reason: actualDay === 1 ? 'Новый цикл' : 'Продолжаем'
+  }
+}
+
 export default function Today() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  
+
   const [planData, setPlanData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [done, setDone] = useState(false)
@@ -19,23 +50,17 @@ export default function Today() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  // 🔥 Загрузка данных
   useEffect(() => {
     if (!user) return
-    
+
     Promise.all([
       getDoc(doc(db, 'plans', user.uid)),
       getDoc(doc(db, 'streaks', user.uid))
-    ]).then(([planSnap, streakSnap]) => {
+    ]).then(([planSnap]) => {
       if (planSnap.exists()) {
         const data = planSnap.data()
         setPlanData(data)
-        
-        // 🔥 Рассчитываем что делать сегодня
-        const workout = calculateTodayWorkout(data)
-        setTodayWorkout(workout)
-        
-        // Проверка выполнено ли уже сегодня
+        setTodayWorkout(calculateTodayWorkout(data))
         if (data.completedWorkouts?.some(w => w.date === today)) {
           setDone(true)
         }
@@ -43,75 +68,35 @@ export default function Today() {
     }).finally(() => setLoading(false))
   }, [user])
 
-  // 🔥 Умный расчёт тренировки
-  function calculateTodayWorkout(data) {
-    if (!data?.plan) return null
-    
-    // Первая тренировка
-    if (!data.lastWorkoutDate) {
-      return { day: 1, isRest: false, reason: 'Погнали!' }
-    }
-    
-    // Считаем дни с последней тренировки
-    const last = new Date(data.lastWorkoutDate)
-    const today = new Date()
-    const daysSince = Math.floor((today - last) / 86400000)
-    
-    // 🔥 Меньше 48 часов = отдых (мышцы растут!)
-    if (daysSince < 2) {
-      return { 
-        isRest: true, 
-        reason: 'Восстановление',
-        nextWorkout: new Date(last.getTime() + 2 * 86400000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
-      }
-    }
-    
-    // Определяем какой день делать
-    const nextDay = data.nextWorkoutDay || 1
-    const actualDay = nextDay > 3 ? 1 : nextDay
-    
-    return { 
-      day: actualDay, 
-      isRest: false, 
-      reason: actualDay === 1 ? 'Новый цикл' : 'Продолжаем' 
-    }
-  }
-
-  // 🔥 Отметка выполненной тренировки
   const handleDone = async () => {
     if (done || saving) return
     setSaving(true)
-    
+
     try {
       const ref = doc(db, 'plans', user.uid)
       const streakRef = doc(db, 'streaks', user.uid)
-      
-      // Обновляем план
+
       const nextDay = (planData.nextWorkoutDay || 1) + 1
       await updateDoc(ref, {
         lastWorkoutDate: today,
         nextWorkoutDay: nextDay > 3 ? 1 : nextDay,
-        completedWorkouts: [...(planData.completedWorkouts || []), { 
-          day: todayWorkout.day, 
-          date: today 
+        completedWorkouts: [...(planData.completedWorkouts || []), {
+          day: todayWorkout.day,
+          date: today
         }]
       })
-      
-      // Обновляем стрики
+
       const streakSnap = await getDoc(streakRef)
       if (streakSnap.exists()) {
         const streakData = streakSnap.data()
         const lastStreak = streakData.lastWorkoutDate || null
-        
-        // Если последняя тренировка была вчера или сегодня — продолжаем серию
         let newStreak = streakData.currentStreak || 0
         if (lastStreak) {
           const daysSince = (new Date(today) - new Date(lastStreak)) / 86400000
-          if (daysSince <= 3) newStreak++ // 3 дня окно для продолжения стрика
+          if (daysSince <= 3) newStreak++
         } else {
           newStreak = 1
         }
-        
         await updateDoc(streakRef, {
           currentStreak: newStreak,
           longestStreak: Math.max(newStreak, streakData.longestStreak || 0),
@@ -127,21 +112,22 @@ export default function Today() {
           dates: [today]
         })
       }
-      
+
       setDone(true)
-      
-      // Пересчитываем что делать дальше
-      const updatedData = { ...planData, lastWorkoutDate: today, nextWorkoutDay: nextDay > 3 ? 1 : nextDay }
+
+      const updatedData = {
+        ...planData,
+        lastWorkoutDate: today,
+        nextWorkoutDay: nextDay > 3 ? 1 : nextDay
+      }
       setTodayWorkout(calculateTodayWorkout(updatedData))
-      
-    } catch (e) { 
-      console.error('Ошибка сохранения:', e) 
-    } finally { 
-      setSaving(false) 
+    } catch (e) {
+      console.error('Ошибка сохранения:', e)
+    } finally {
+      setSaving(false)
     }
   }
 
-  // 🔥 Получаем упражнения для текущего дня
   function getExercisesForDay(dayNum) {
     if (!planData?.plan) return null
     const plan = planData.plan
@@ -161,7 +147,7 @@ export default function Today() {
       <div className={styles.body}>
         {loading && (
           <div className={styles.center}>
-            <div className={styles.dots}><span/><span/><span/></div>
+            <div className={styles.dots}><span /><span /><span /></div>
           </div>
         )}
 
@@ -176,7 +162,6 @@ export default function Today() {
 
         {!loading && planData && (
           <>
-            {/* 🔥 STREAK CARD */}
             <div className={styles.streakCard}>
               <div className={styles.streakFire}>🔥</div>
               <div className={styles.streakInfo}>
@@ -188,7 +173,6 @@ export default function Today() {
               {done && <div className={styles.streakDone}>✓ Сегодня зачтено</div>}
             </div>
 
-            {/* 🔥 TODAY HEADER */}
             <div className={styles.todayHeader}>
               <div className={styles.todayDay}>
                 {todayWorkout?.isRest ? 'День отдыха' : `День ${todayWorkout?.day}`}
@@ -196,7 +180,6 @@ export default function Today() {
               <div className={styles.todayLabel}>{todayWorkout?.reason || ''}</div>
             </div>
 
-            {/* 🔥 REST DAY */}
             {todayWorkout?.isRest ? (
               <div className={styles.restCard}>
                 <div className={styles.restIcon}>😴</div>
@@ -204,15 +187,15 @@ export default function Today() {
                 <div className={styles.restText}>
                   Мышцы растут во время отдыха. Следующая тренировка: {todayWorkout.nextWorkout}
                 </div>
-                {!done && (
+                {!done ? (
                   <button className={styles.doneBtn} onClick={handleDone} disabled={saving}>
                     {saving ? 'Сохраняем...' : '✓ Отметить день отдыха'}
                   </button>
+                ) : (
+                  <div className={styles.doneBadge}>✓ День отмечен</div>
                 )}
-                {done && <div className={styles.doneBadge}>✓ День отмечен</div>}
               </div>
             ) : (
-              /* 🔥 WORKOUT DAY */
               <div className={styles.workoutCard}>
                 {currentExercises ? (
                   <PlanRenderer plan={[currentExercises]} />
@@ -230,7 +213,6 @@ export default function Today() {
               </div>
             )}
 
-            {/* 🔥 WEEK PROGRESS */}
             <div className={styles.weekCard}>
               <div className={styles.weekTitle}>Прогресс</div>
               <div className={styles.weekStats}>

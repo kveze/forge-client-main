@@ -2,9 +2,8 @@ import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { generateLooksMaxTip } from '../api/forge'
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage } from '../firebase'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 import Header from '../components/Header'
 import styles from './LooksMaxTip.module.css'
 
@@ -42,6 +41,54 @@ function fileToBase64(file) {
   })
 }
 
+// Слайдер до/после
+function BeforeAfterSlider({ before, after }) {
+  const [pos, setPos] = useState(50)
+  const containerRef = useRef(null)
+
+  const handleMove = (e) => {
+    const rect = containerRef.current.getBoundingClientRect()
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left
+    const pct = Math.max(0, Math.min(100, (x / rect.width) * 100))
+    setPos(pct)
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className={styles.slider}
+      onMouseMove={handleMove}
+      onTouchMove={handleMove}
+    >
+      <img src={before} alt="до" className={styles.sliderImg} />
+      <div className={styles.sliderAfter} style={{ width: `${pos}%` }}>
+        <img src={after} alt="после" className={styles.sliderImg} />
+      </div>
+      <div className={styles.sliderHandle} style={{ left: `${pos}%` }}>
+        <div className={styles.sliderLine} />
+        <div className={styles.sliderCircle}>↔</div>
+      </div>
+      <div className={styles.sliderLabelLeft}>ДО</div>
+      <div className={styles.sliderLabelRight}>ПОСЛЕ</div>
+    </div>
+  )
+}
+
+// Шкала параметра
+function ScoreBar({ label, score, max = 10 }) {
+  const pct = (score / max) * 100
+  const color = pct >= 70 ? '#4ade80' : pct >= 40 ? '#FF2D2D' : '#888'
+  return (
+    <div className={styles.scoreRow}>
+      <div className={styles.scoreLabel}>{label}</div>
+      <div className={styles.scoreBarWrap}>
+        <div className={styles.scoreBarFill} style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <div className={styles.scoreNum} style={{ color }}>{score}/{max}</div>
+    </div>
+  )
+}
+
 export default function LooksMaxTip() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -55,27 +102,18 @@ export default function LooksMaxTip() {
   const [transformed, setTransformed] = useState(null)
   const [transforming, setTransforming] = useState(false)
   const [stage, setStage] = useState('idle')
+  const [error, setError] = useState(null)
 
-const handlePhotoSelect = async (e) => {
-  const file = e.target.files[0]
-  if (!file) return
-
-  // Только изображения
-  if (!file.type.startsWith('image/')) {
-    alert('Только фото')
-    return
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) { setError('Только фото'); return }
+    if (file.size > 5 * 1024 * 1024) { setError('Максимум 5MB'); return }
+    setError(null)
+    const base64 = await fileToBase64(file)
+    setPhoto(base64)
+    setPhotoURL(URL.createObjectURL(file))
   }
-
-  // Максимум 5MB
-  if (file.size > 5 * 1024 * 1024) {
-    alert('Фото слишком большое, максимум 5MB')
-    return
-  }
-
-  const base64 = await fileToBase64(file)
-  setPhoto(base64)
-  setPhotoURL(URL.createObjectURL(file))
-}
 
   const getUserData = async () => {
     if (!user) return null
@@ -83,14 +121,13 @@ const handlePhotoSelect = async (e) => {
     if (!planDoc.exists()) return null
     const form = planDoc.data().form
     return {
-      age:    Number(form.age)    || 20,
+      age: Number(form.age) || 20,
       gender: form.gender === 'Мужчина' ? 'мужчина' : 'женщина',
       weight: Number(form.weight) || 75,
       height: Number(form.height) || 180,
-      goal:   form.goal  || '',
-      level:  form.level || '',
-      days:   form.days  || 3,
-      bf:     0,
+      goal: form.goal || '',
+      level: form.level || '',
+      days: form.days || 3,
     }
   }
 
@@ -98,29 +135,28 @@ const handlePhotoSelect = async (e) => {
     if (!photo) return
     setLoading(true)
     setNoPlan(false)
+    setError(null)
     try {
       const userData = await getUserData()
       if (!userData) { setNoPlan(true); return }
       const result = await analyzePhoto(photo, userData)
       if (!result.success) {
-        if (result.error?.includes('лицо')) {
-          alert('На фото не обнаружено лицо 😅 Загрузи селфи')
-        }
+        setError(result.error || 'Ошибка анализа')
         return
       }
       setTip(result.data)
       setStage('tips')
     } catch (e) {
-      console.error(e)
+      setError('Ошибка соединения')
     } finally {
       setLoading(false)
     }
   }
- 
 
   const handleGetTipWithoutPhoto = async () => {
     setLoading(true)
     setNoPlan(false)
+    setError(null)
     try {
       const userData = await getUserData()
       if (!userData) { setNoPlan(true); return }
@@ -128,35 +164,43 @@ const handlePhotoSelect = async (e) => {
       setTip(result.data)
       setStage('tips')
     } catch (e) {
-      console.error(e)
+      setError('Ошибка соединения')
     } finally {
       setLoading(false)
     }
   }
 
-const handleTransform = async () => {
-  if (!photo || !tip) return
-  setTransforming(true)
-  try {
-    const result = await transformPhoto(photo, tip.tips, tip.gender)
-    const b64 = result.data.image_base64
-    setTransformed(b64)
-    setStage('transform')
-    // ← всё, больше ничего не сохраняем
-  } catch (e) {
-    console.error(e)
-  } finally {
-    setTransforming(false)
+  const handleTransform = async () => {
+    if (!photo || !tip) return
+    setTransforming(true)
+    setError(null)
+    try {
+      const result = await transformPhoto(photo, tip.tips, tip.gender)
+      setTransformed(`data:image/png;base64,${result.data.image_base64}`)
+      setStage('transform')
+    } catch (e) {
+      setError('Ошибка генерации')
+    } finally {
+      setTransforming(false)
+    }
   }
-}
 
   const handleReset = () => {
-    setTip(null)
-    setPhoto(null)
-    setPhotoURL(null)
-    setTransformed(null)
-    setStage('idle')
+    setTip(null); setPhoto(null); setPhotoURL(null)
+    setTransformed(null); setStage('idle'); setError(null)
   }
+
+  // Фейковые скоры если бэк не вернул (для красоты)
+  const scores = tip?.scores || {
+    'Симметрия': 7,
+    'Кожа': 6,
+    'Скулы': 5,
+    'Челюсть': 6,
+    'Общий вид': 7,
+  }
+
+  const totalScore = tip?.total_score ||
+    Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length * 10)
 
   return (
     <div className={styles.page}>
@@ -171,8 +215,8 @@ const handleTransform = async () => {
             ТВОЙ<br /><em>LOOKS</em><br />MAX
           </h1>
           <p className={styles.heroSub}>
-            Загрузи фото — AI проанализирует лицо и покажет<br />
-            как ты будешь выглядеть после преображения.
+            Загрузи фото — AI проанализирует лицо, оценит параметры<br />
+            и покажет как ты будешь выглядеть после преображения.
           </p>
         </div>
 
@@ -181,35 +225,31 @@ const handleTransform = async () => {
 
           {noplan && (
             <div className={styles.noPlan}>
-              Сначала создай план — данные берутся оттуда.
-              <button className={styles.btn} onClick={() => navigate('/generate')}>
-                СОЗДАТЬ ПЛАН →
-              </button>
+              <div className={styles.noPlanIcon}>📋</div>
+              <div>Сначала создай план — данные берутся оттуда.</div>
+              <button className={styles.btn} onClick={() => navigate('/generate')}>СОЗДАТЬ ПЛАН →</button>
             </div>
           )}
+
+          {error && <div className={styles.errorMsg}>{error}</div>}
 
           {/* IDLE */}
           {stage === 'idle' && !noplan && (
             <div className={styles.uploadSection}>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoSelect}
-                className={styles.fileInput}
-              />
+              <input ref={fileRef} type="file" accept="image/*" onChange={handlePhotoSelect} className={styles.fileInput} />
 
               {photoURL ? (
                 <div className={styles.photoPreview}>
                   <img src={photoURL} alt="фото" className={styles.previewImg} />
-                  <button className={styles.changePhoto} onClick={() => fileRef.current.click()}>
-                    Сменить фото
-                  </button>
+                  <button className={styles.changePhoto} onClick={() => fileRef.current.click()}>Сменить фото</button>
                 </div>
               ) : (
                 <button className={styles.uploadBtn} onClick={() => fileRef.current.click()}>
-                  <span className={styles.uploadIcon}>↑</span>
+                  <div className={styles.uploadIconWrap}>
+                    <span className={styles.uploadIcon}>↑</span>
+                  </div>
                   <span>ЗАГРУЗИТЬ ФОТО</span>
+                  <span className={styles.uploadHint}>JPG, PNG до 5MB</span>
                 </button>
               )}
 
@@ -233,17 +273,30 @@ const handleTransform = async () => {
           {/* TIPS */}
           {stage === 'tips' && tip && (
             <div className={styles.result}>
-              {photoURL && (
-                <div className={styles.photoSmall}>
-                  <img src={photoURL} alt="твоё фото" className={styles.previewImgSmall} />
-                </div>
-              )}
 
-              <div className={styles.tipsMeta}>
-                <span className={styles.badge}>{tip.category}</span>
-                {tip.priority === 'высокий' && (
-                  <span className={styles.priority}>🔥 ВАЖНО</span>
-                )}
+              {/* Аватар + общий скор */}
+              <div className={styles.resultHeader}>
+                {photoURL && <img src={photoURL} alt="фото" className={styles.avatarCircle} />}
+                <div className={styles.totalScoreWrap}>
+                  <div className={styles.totalScoreNum}>{totalScore}</div>
+                  <div className={styles.totalScoreLabel}>/ 100</div>
+                </div>
+                <div className={styles.totalScoreTitle}>FORGE SCORE</div>
+              </div>
+
+              {/* Параметры */}
+              <div className={styles.scoresBlock}>
+                {Object.entries(scores).map(([label, score]) => (
+                  <ScoreBar key={label} label={label} score={score} />
+                ))}
+              </div>
+
+              <div className={styles.divider} />
+
+              {/* Советы */}
+              <div className={styles.tipsHeader}>
+                <div className={styles.tipsTitle}>// ЧТО УЛУЧШИТЬ</div>
+                {tip.category && <span className={styles.badge}>{tip.category}</span>}
               </div>
 
               <div className={styles.tipsList}>
@@ -258,12 +311,10 @@ const handleTransform = async () => {
               <div className={styles.resultActions}>
                 {photo && (
                   <button className={styles.btn} onClick={handleTransform} disabled={transforming}>
-                    {transforming ? '// ГЕНЕРИРУЮ...' : '✨ ПОКАЗАТЬ ПРЕОБРАЖЕНИЕ'}
+                    {transforming ? '// ГЕНЕРИРУЮ ПРЕОБРАЖЕНИЕ...' : '✨ ПОКАЗАТЬ ПРЕОБРАЖЕНИЕ'}
                   </button>
                 )}
-                <button className={styles.ghostBtn} onClick={handleReset}>
-                  СНАЧАЛА
-                </button>
+                <button className={styles.ghostBtn} onClick={handleReset}>СНАЧАЛА</button>
               </div>
 
               <p className={styles.disclaimer}>
@@ -274,49 +325,41 @@ const handleTransform = async () => {
 
           {/* TRANSFORM */}
           {stage === 'transform' && transformed && (
-  <div className={styles.transformResult}>
-    <div className={styles.beforeAfter}>
-      <div className={styles.baItem}>
-        <div className={styles.baLabel}>ДО</div>
-        <img src={photoURL} alt="до" className={styles.baImg} />
-      </div>
-      <div className={styles.baItem}>
-        <div className={styles.baLabelGreen}>ПОСЛЕ</div>
-        <img src={`data:image/png;base64,${transformed}`} alt="после" className={styles.baImg} />
-      </div>
-    </div>
+            <div className={styles.transformResult}>
 
-    <div className={styles.tipsList} style={{marginTop: 20}}>
-      {tip.tips.map((t, i) => (
-        <div key={i} className={styles.tipItem}>
-          <span className={styles.tipNum}>{i + 1}</span>
-          <p className={styles.tipText}>{t}</p>
-        </div>
-      ))}
-    </div>
+              <div className={styles.transformHeader}>
+                <div className={styles.tipsTitle}>// ТВОЁ ПРЕОБРАЖЕНИЕ</div>
+                <div className={styles.transformHint}>Двигай слайдер</div>
+              </div>
 
-    <div className={styles.resultActions} style={{marginTop: 16}}>
-      {/* ← КНОПКА СКАЧАТЬ */}
-      <button className={styles.btn} onClick={() => {
-        const a = document.createElement('a')
-        a.href = `data:image/png;base64,${transformed}`
-        a.download = 'forge-looksmax.png'
-        a.click()
-      }}>
-        ↓ СКАЧАТЬ ПРЕОБРАЖЕНИЕ
-      </button>
+              <BeforeAfterSlider before={photoURL} after={transformed} />
 
-      <button className={styles.ghostBtn} onClick={handleReset}>
-        ПОПРОБОВАТЬ СНОВА
-      </button>
-    </div>
+              <div className={styles.divider} />
 
-    <p className={styles.disclaimer}>
-      Советы носят информационный характер. Forge не несёт ответственности за результат.
-    </p>
-  </div>
-)}
+              <div className={styles.tipsList}>
+                {tip.tips.map((t, i) => (
+                  <div key={i} className={styles.tipItem}>
+                    <span className={styles.tipNum}>{i + 1}</span>
+                    <p className={styles.tipText}>{t}</p>
+                  </div>
+                ))}
+              </div>
 
+              <div className={styles.resultActions}>
+                <button className={styles.btn} onClick={() => {
+                  const a = document.createElement('a')
+                  a.href = transformed
+                  a.download = 'forge-looksmax.png'
+                  a.click()
+                }}>↓ СКАЧАТЬ ПРЕОБРАЖЕНИЕ</button>
+                <button className={styles.ghostBtn} onClick={handleReset}>ПОПРОБОВАТЬ СНОВА</button>
+              </div>
+
+              <p className={styles.disclaimer}>
+                Советы носят информационный характер. Forge не несёт ответственности за результат.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-Command go -ErrorAction SilentlyContinue; if \\(-not $?\\) { Get-ChildItem \"C:\\\\Program Files\\\\Go\\\\bin\\\\go.exe\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:USERPROFILE\\\\go\\\\bin\\\\go.exe\" -ErrorAction SilentlyContinue })"
+    ]
+  }
+}

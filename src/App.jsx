@@ -9,9 +9,6 @@ import Profile from './pages/Profile'
 import LooksMaxTip from './pages/LooksMaxTip'
 import Chat from './pages/Chat'
 
-// добавь роут (без PrivateRoute — анонимы тоже могут):
-
-
 export default function App() {
   return (
     <Routes>
