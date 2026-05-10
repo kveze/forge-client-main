@@ -6,7 +6,7 @@ import styles from './Generate.module.css'
 import Header from '../components/Header'
 import { validateBody } from '../utils/validate'
 
-const GOALS = ['Набор массы', 'Сила', 'Рельеф', 'Выносливость', 'Похудение']
+const GOALS = ['Набор массы', 'Сила', 'Рельеф', 'Выносливость', 'Похудение', ]
 const LEVELS = ['Новичок', 'Средний', 'Продвинутый']
 const EQUIPMENT_HINTS = ['Только тело', 'Турник', 'Брусья', 'Гантели', 'Штанга', 'Скакалка', 'Тренажёры']
 
