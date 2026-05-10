@@ -49,7 +49,7 @@ export default function Register() {
     setLoading(true)
     await auth.currentUser.reload()
     if (auth.currentUser.emailVerified) {
-      navigate('/')
+      navigate('/chat')
     } else {
       setError('Почта ещё не подтверждена')
     }
@@ -83,7 +83,7 @@ export default function Register() {
   const handleGoogle = async () => {
     try {
       await loginWithGoogle()
-      navigate('/')
+      navigate('/chat')
     } catch {
       setError('Ошибка Google')
     }
