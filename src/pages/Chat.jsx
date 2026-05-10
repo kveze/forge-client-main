@@ -581,7 +581,7 @@ export default function Chat() {
             {msg.role === 'assistant' && <div className={styles.msgAvatar}>F</div>}
             <div className={styles.msgBubble}>
               {msg.content && <div className={styles.msgText}>{msg.content}</div>}
-              {msg.plan && <PlanInMessage plan={msg.plan} tips={planData?.tips} recovery={planData?.recovery} />}
+              {msg.plan && <PlanInMessage plan={msg.plan} tips={planData?.tips} recovery={planData?.recovery} key={`${planData?.tips?.length}-${planData?.recovery?.length}`} />}
               <div className={styles.msgTime}>
                 {new Date(msg.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
               </div>
