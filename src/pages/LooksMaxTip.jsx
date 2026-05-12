@@ -1,36 +1,12 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { generateLooksMaxTip } from '../api/forge'
+import { generateLooksMaxTip, analyzeFace, transformFace } from '../api/forge'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import Header from '../components/Header'
+import BeforeAfterSlider from '../components/BeforeAfterSlider'
 import styles from './LooksMaxTip.module.css'
-
-const API = import.meta.env.VITE_API_URL
-
-async function analyzePhoto(imageBase64, userData) {
-  const res = await fetch(`${API}/looksmax-analyze`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      image_base64: imageBase64,
-      age: userData.age,
-      gender: userData.gender,
-      goal: userData.goal,
-    }),
-  })
-  return res.json()
-}
-
-async function transformPhoto(imageBase64, tips, gender) {
-  const res = await fetch(`${API}/looksmax-transform`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image_base64: imageBase64, tips, gender }),
-  })
-  return res.json()
-}
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -39,39 +15,6 @@ function fileToBase64(file) {
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
-}
-
-// Слайдер до/после
-function BeforeAfterSlider({ before, after }) {
-  const [pos, setPos] = useState(50)
-  const containerRef = useRef(null)
-
-  const handleMove = (e) => {
-    const rect = containerRef.current.getBoundingClientRect()
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left
-    const pct = Math.max(0, Math.min(100, (x / rect.width) * 100))
-    setPos(pct)
-  }
-
-  return (
-    <div
-      ref={containerRef}
-      className={styles.slider}
-      onMouseMove={handleMove}
-      onTouchMove={handleMove}
-    >
-      <img src={before} alt="до" className={styles.sliderImg} />
-      <div className={styles.sliderAfter} style={{ width: `${pos}%` }}>
-        <img src={after} alt="после" className={styles.sliderImg} />
-      </div>
-      <div className={styles.sliderHandle} style={{ left: `${pos}%` }}>
-        <div className={styles.sliderLine} />
-        <div className={styles.sliderCircle}>↔</div>
-      </div>
-      <div className={styles.sliderLabelLeft}>ДО</div>
-      <div className={styles.sliderLabelRight}>ПОСЛЕ</div>
-    </div>
-  )
 }
 
 // Шкала параметра
@@ -88,6 +31,16 @@ function ScoreBar({ label, score, max = 10 }) {
     </div>
   )
 }
+
+const DEFAULT_SCORES = {
+  'Симметрия': 7,
+  'Кожа': 6,
+  'Скулы': 5,
+  'Челюсть': 6,
+  'Общий вид': 7,
+}
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
 export default function LooksMaxTip() {
   const { user } = useAuth()
@@ -108,7 +61,7 @@ export default function LooksMaxTip() {
     const file = e.target.files[0]
     if (!file) return
     if (!file.type.startsWith('image/')) { setError('Только фото'); return }
-    if (file.size > 5 * 1024 * 1024) { setError('Максимум 5MB'); return }
+    if (file.size > MAX_FILE_SIZE) { setError('Максимум 5MB'); return }
     setError(null)
     const base64 = await fileToBase64(file)
     setPhoto(base64)
@@ -139,7 +92,12 @@ export default function LooksMaxTip() {
     try {
       const userData = await getUserData()
       if (!userData) { setNoPlan(true); return }
-      const result = await analyzePhoto(photo, userData)
+      const result = await analyzeFace({
+        imageBase64: photo,
+        age: userData.age,
+        gender: userData.gender,
+        goal: userData.goal,
+      })
       if (!result.success) {
         setError(result.error || 'Ошибка анализа')
         return
@@ -175,7 +133,11 @@ export default function LooksMaxTip() {
     setTransforming(true)
     setError(null)
     try {
-      const result = await transformPhoto(photo, tip.tips, tip.gender)
+      const result = await transformFace({
+        imageBase64: photo,
+        tips: tip.tips,
+        gender: tip.gender,
+      })
       setTransformed(`data:image/png;base64,${result.data.image_base64}`)
       setStage('transform')
     } catch (e) {
@@ -190,21 +152,22 @@ export default function LooksMaxTip() {
     setTransformed(null); setStage('idle'); setError(null)
   }
 
-  // Фейковые скоры если бэк не вернул (для красоты)
-  const scores = tip?.scores || {
-    'Симметрия': 7,
-    'Кожа': 6,
-    'Скулы': 5,
-    'Челюсть': 6,
-    'Общий вид': 7,
+  const handleDownload = () => {
+    if (!transformed) return
+    const a = document.createElement('a')
+    a.href = transformed
+    a.download = 'forge-looksmax.png'
+    a.click()
   }
 
+  // Скоры с бэка или дефолтные (для красоты)
+  const scores = tip?.scores || DEFAULT_SCORES
   const totalScore = tip?.total_score ||
     Math.round(Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length * 10)
 
   return (
     <div className={styles.page}>
-      <Header variant="profile" />
+      <Header variant="looksmax" />
 
       <div className={styles.body}>
 
@@ -346,12 +309,7 @@ export default function LooksMaxTip() {
               </div>
 
               <div className={styles.resultActions}>
-                <button className={styles.btn} onClick={() => {
-                  const a = document.createElement('a')
-                  a.href = transformed
-                  a.download = 'forge-looksmax.png'
-                  a.click()
-                }}>↓ СКАЧАТЬ ПРЕОБРАЖЕНИЕ</button>
+                <button className={styles.btn} onClick={handleDownload}>↓ СКАЧАТЬ ПРЕОБРАЖЕНИЕ</button>
                 <button className={styles.ghostBtn} onClick={handleReset}>ПОПРОБОВАТЬ СНОВА</button>
               </div>
 

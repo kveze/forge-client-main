@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { db } from '../firebase'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { generatePlan } from '../api/forge'
+import { validateBody, BODY_LIMITS } from '../utils/validate'
+import { calcStreak } from '../utils/streak'
 import styles from './Profile.module.css'
 import PlanRenderer from '../components/PlanRenderer'
 import Header from '../components/Header'
@@ -18,61 +21,15 @@ function TipItem({ text }) {
   )
 }
 
-function calcStreak(dates) {
-  if (!dates || dates.length === 0) return 0
-
-  const sorted = [...dates]
-    .map(d => new Date(d))
-    .sort((a, b) => b - a)
-
-  const today = new Date()
-  const yesterday = new Date(Date.now() - 86400000)
-  const isSameDay = (a, b) => a.toDateString() === b.toDateString()
-
-  if (!isSameDay(sorted[0], today) && !isSameDay(sorted[0], yesterday)) return 0
-
-  let streak = 1
-  for (let i = 1; i < sorted.length; i++) {
-    const diff = (sorted[i - 1] - sorted[i]) / 86400000
-    if (diff === 1) streak++
-    else break
-  }
-  return streak
-}
-
 function getInitials(email) {
   if (!email) return '?'
   return email[0].toUpperCase()
 }
 
-function validateEditForm(form) {
-  const errors = {}
-  const age = Number(form.age)
-  const weight = Number(form.weight)
-  const height = Number(form.height)
-
-  if (!form.age) errors.age = 'Укажи возраст'
-  else if (isNaN(age) || age < 10 || age > 80) errors.age = 'От 10 до 80 лет'
-
-  if (!form.weight) errors.weight = 'Укажи вес'
-  else if (isNaN(weight) || weight < 30 || weight > 200) errors.weight = 'От 30 до 200 кг'
-
-  if (form.height) {
-    if (isNaN(height) || height < 120 || height > 220) errors.height = 'От 120 до 220 см'
-  }
-
-  if (form.height && form.weight && !errors.weight && !errors.height) {
-    const bmi = weight / ((height / 100) ** 2)
-    if (bmi < 13 || bmi > 50) errors.weight = 'Проверь рост и вес — не сходится'
-  }
-
-  return errors
-}
-
 const FORM_FIELDS = [
-  { key: 'age', label: 'Возраст', unit: 'лет', min: 10, max: 80 },
-  { key: 'weight', label: 'Вес', unit: 'кг', min: 30, max: 200 },
-  { key: 'height', label: 'Рост', unit: 'см', min: 120, max: 220 },
+  { key: 'age',    label: 'Возраст', unit: 'лет', ...BODY_LIMITS.age },
+  { key: 'weight', label: 'Вес',     unit: 'кг',  ...BODY_LIMITS.weight },
+  { key: 'height', label: 'Рост',    unit: 'см',  ...BODY_LIMITS.height },
 ]
 
 const GOAL_OPTIONS = ['Набор массы', 'Сила', 'Рельеф', 'Выносливость', 'Похудение']
@@ -126,14 +83,9 @@ export default function Profile() {
     load()
   }, [user])
 
-  const handleNumChange = (key, value, min, max) => {
+  const handleNumChange = (key, value) => {
     const clean = value.replace(/[^0-9]/g, '')
-    if (clean === '') {
-      setEditForm(ef => ({ ...ef, [key]: '' }))
-      return
-    }
-    const num = Math.max(min, Math.min(max, Number(clean)))
-    setEditForm(ef => ({ ...ef, [key]: String(num) }))
+    setEditForm(ef => ({ ...ef, [key]: clean }))
     if (editErrors[key]) setEditErrors(e => ({ ...e, [key]: null }))
   }
 
@@ -150,29 +102,50 @@ export default function Profile() {
   const handleSaveEdit = async () => {
     if (!planData || !user) return
 
-    const clampedForm = {
-      ...editForm,
-      age: String(Math.min(80, Math.max(10, Number(editForm.age) || 10))),
-      weight: String(Math.min(200, Math.max(30, Number(editForm.weight) || 30))),
-      height: editForm.height
-        ? String(Math.min(220, Math.max(120, Number(editForm.height) || 120)))
-        : '',
-    }
-
-    const errs = validateEditForm(clampedForm)
+    // Валидируем то что ввёл пользователь — без молчаливых "поправок".
+    // Раньше тут был баг: значения клампились в [min, max] до валидации,
+    // поэтому ввод 9 лет молча превращался в 10 и сохранялся.
+    const errs = validateBody(editForm, { heightOptional: true })
     if (Object.keys(errs).length > 0) {
       setEditErrors(errs)
       return
     }
 
-    const updated = { ...planData, form: { ...planData.form, ...clampedForm } }
+    const updated = { ...planData, form: { ...planData.form, ...editForm } }
     await setDoc(doc(db, 'plans', user.uid), updated)
 
     setPlanData(updated)
-    setEditForm(clampedForm)
     setEditing(false)
     setEditErrors({})
     setShowRePlanModal(true)
+  }
+
+  const handleReplan = async () => {
+    setShowRePlanModal(false)
+    setLoading(true)
+    try {
+      const payload = {
+        gender: planData.form.gender,
+        age: Number(planData.form.age),
+        height: Number(planData.form.height),
+        weight: Number(planData.form.weight),
+        goal: planData.form.goal,
+        level: planData.form.level,
+        equipment: planData.form.equipment,
+        days: Number(planData.form.days),
+        freeText: planData.form.freeText || ''
+      }
+      const res = await generatePlan(payload)
+      const newPlan = res.success ? (res.data?.week_plan || res.data?.plan) : null
+      if (newPlan && newPlan.length > 0) {
+        localStorage.setItem('forge_pending', JSON.stringify({ form: payload, plan: newPlan }))
+        navigate('/chat')
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const streak = calcStreak(streakDates)
@@ -216,7 +189,11 @@ export default function Profile() {
                   <div className={styles.cardTitle}>Мои данные</div>
                   <button
                     className={styles.editBtn}
-                    onClick={() => { setEditing(e => !e); setEditErrors({}) }}
+                    onClick={() => {
+                      setEditing(e => !e)
+                      setEditErrors({})
+                      if (!editing) setEditForm(planData.form || {})
+                    }}
                   >
                     {editing ? 'Отмена' : 'Изменить'}
                   </button>
@@ -253,23 +230,25 @@ export default function Profile() {
                   </div>
                 ) : (
                   <div className={styles.editGrid}>
-                    {FORM_FIELDS.map(f => (
-                      <div key={f.key} className={styles.editField}>
-                        <label className={styles.editLabel}>{f.label}</label>
-                        <div className={`${styles.editInputWrap} ${editErrors[f.key] ? styles.editInputError : ''}`}>
-                          <input
-                            type="number"
-                            className={styles.editInput}
-                            value={editForm[f.key] || ''}
-                            min={f.min}
-                            max={f.max}
-                            onChange={e => handleNumChange(f.key, e.target.value, f.min, f.max)}
-                          />
-                          <span className={styles.editUnit}>{f.unit}</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                      {FORM_FIELDS.map(f => (
+                        <div key={f.key} className={styles.editField}>
+                          <label className={styles.editLabel}>{f.label}</label>
+                          <div className={`${styles.editInputWrap} ${editErrors[f.key] ? styles.editInputError : ''}`}>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              className={styles.editInput}
+                              value={editForm[f.key] || ''}
+                              onChange={e => handleNumChange(f.key, e.target.value)}
+                            />
+                            <span className={styles.editUnit}>{f.unit}</span>
+                          </div>
+                          {editErrors[f.key] && <div className={styles.editError}>{editErrors[f.key]}</div>}
                         </div>
-                        {editErrors[f.key] && <div className={styles.editError}>{editErrors[f.key]}</div>}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
 
                     <div className={`${styles.editField} ${styles.editFieldFull}`}>
                       <label className={styles.editLabel}>Цель</label>
@@ -390,10 +369,7 @@ export default function Profile() {
             <div className={styles.replanTitle}>Данные обновлены!</div>
             <div className={styles.replanText}>Пересоздать план под новые данные?</div>
             <div className={styles.replanBtns}>
-              <button
-                className={styles.replanYes}
-                onClick={() => { setShowRePlanModal(false); navigate('/generate') }}
-              >
+              <button className={styles.replanYes} onClick={handleReplan}>
                 Да, пересоздать
               </button>
               <button className={styles.replanNo} onClick={() => setShowRePlanModal(false)}>

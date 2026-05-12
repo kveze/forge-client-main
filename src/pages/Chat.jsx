@@ -3,100 +3,22 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { db } from '../firebase'
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore'
-import styles from './Chat.module.css'
+import { sendChatMessage, fetchTipsRaw, fetchRecoveryRaw } from '../api/forge'
+import { calcStreak, todayISO } from '../utils/streak'
+import { getTodayPlan, todayDayName } from '../utils/plan'
+import VideoModal from '../components/VideoModal'
 import Header from '../components/Header'
+import styles from './Chat.module.css'
 
 const FREE_LIMIT = 3
-const BACKEND = 'https://forge-go-production.up.railway.app'
-const DAYS_RU = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
-const DAYS_PLAN = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+const READY_DELAY_MS = 3000
+const CHAT_HISTORY_LIMIT = 50
+const ANON_HISTORY_LIMIT = 20
+const PAYWALL_DELAY_MS = 800
 
-function getTodayPlan(plan) {
-  if (!plan) return null
-  const days = Array.isArray(plan) ? plan : plan?.week_plan
-  if (!days?.length) return null
-  const todayName = DAYS_RU[new Date().getDay()]
-  const todayIndex = DAYS_PLAN.indexOf(todayName)
-  if (todayIndex === -1) return null
-  return days[todayIndex % days.length] || null
-}
-
-function calcStreak(dates) {
-  if (!dates?.length) return 0
-  const sorted = [...dates].sort().reverse()
-  const today = new Date().toISOString().split('T')[0]
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
-  if (sorted[0] !== today && sorted[0] !== yesterday) return 0
-  let streak = 1
-  for (let i = 1; i < sorted.length; i++) {
-    const diff = (new Date(sorted[i - 1]) - new Date(sorted[i])) / 86400000
-    if (diff === 1) streak++
-    else break
-  }
-  return streak
-}
-
-function VideoModal({ exerciseName, onClose }) {
-  const [videoId, setVideoId] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const KEY = import.meta.env.VITE_YOUTUBE_KEY
-
-  useEffect(() => {
-    const query = encodeURIComponent(`${exerciseName} техника выполнения`)
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&maxResults=5&videoDuration=short&key=${KEY}`
-
-    fetch(searchUrl)
-      .then(r => r.json())
-      .then(async data => {
-        const items = data.items || []
-        if (!items.length) { setVideoId(null); return }
-
-        // Берём IDs и проверяем длительность
-        const ids = items.map(i => i.id.videoId).join(',')
-        const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${KEY}`
-        const detailRes = await fetch(detailUrl).then(r => r.json())
-
-        // Ищем видео до 90 секунд
-        const short = detailRes.items?.find(v => {
-          const dur = v.contentDetails.duration
-          const match = dur.match(/PT(?:(\d+)M)?(?:(\d+)S)?/)
-          const mins = parseInt(match?.[1] || 0)
-          const secs = parseInt(match?.[2] || 0)
-          return mins === 0 && secs <= 90
-        })
-
-        // Если не нашли короткое — берём первое
-        setVideoId(short?.id || items[0]?.id?.videoId || null)
-      })
-      .catch(() => setVideoId(null))
-      .finally(() => setLoading(false))
-  }, [])
-
-  return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <span className={styles.modalTitle}>{exerciseName}</span>
-          <button className={styles.modalClose} onClick={onClose}>✕</button>
-        </div>
-        <div className={styles.modalBody}>
-          {loading && <div className={styles.modalLoading}>// ЗАГРУЗКА...</div>}
-          {!loading && !videoId && <div className={styles.modalLoading}>// ВИДЕО НЕ НАЙДЕНО</div>}
-          {!loading && videoId && (
-            <iframe
-              className={styles.videoFrame}
-              src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-
+// ============================================================
+// Сплеш сегодняшней тренировки
+// ============================================================
 function TodaySplash({ day, streak, todayDone, onDone, onClose }) {
   const [canDone, setCanDone] = useState(false)
   const [done, setDone] = useState(todayDone)
@@ -105,10 +27,9 @@ function TodaySplash({ day, streak, todayDone, onDone, onClose }) {
   const [activeVideo, setActiveVideo] = useState(null)
 
   useEffect(() => {
-    if (!todayDone) {
-      const t = setTimeout(() => setCanDone(true), 3000)
-      return () => clearTimeout(t)
-    }
+    if (todayDone) return
+    const t = setTimeout(() => setCanDone(true), READY_DELAY_MS)
+    return () => clearTimeout(t)
   }, [todayDone])
 
   const handleDone = async () => {
@@ -127,6 +48,8 @@ function TodaySplash({ day, streak, todayDone, onDone, onClose }) {
     setTimeout(onClose, 400)
   }
 
+  const streakWord = (n) => n === 1 ? 'день' : n < 5 ? 'дня' : 'дней'
+
   return (
     <div className={`${styles.splash} ${closing ? styles.splashClosing : ''}`}>
       {activeVideo && <VideoModal exerciseName={activeVideo} onClose={() => setActiveVideo(null)} />}
@@ -136,19 +59,17 @@ function TodaySplash({ day, streak, todayDone, onDone, onClose }) {
         <div className={styles.splashSuccess}>
           <div className={styles.splashFireBig}>🔥</div>
           <div className={styles.splashStreakNum}>{streak}</div>
-          <div className={styles.splashStreakLabel}>
-            {streak === 1 ? 'день подряд' : streak < 5 ? 'дня подряд' : 'дней подряд'}
-          </div>
+          <div className={styles.splashStreakLabel}>{streakWord(streak)} подряд</div>
           <div className={styles.splashSuccessText}>Красава! Продолжай в том же духе.</div>
         </div>
       ) : (
         <div className={styles.splashContent}>
           <div className={styles.splashTop}>
-            <div className={styles.splashDay}>{DAYS_RU[new Date().getDay()]}</div>
+            <div className={styles.splashDay}>{todayDayName()}</div>
             <div className={styles.splashFocus}>{day.focus}</div>
             {streak > 0 && (
               <div className={styles.splashStreak}>
-                🔥 {streak} {streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'} подряд
+                🔥 {streak} {streakWord(streak)} подряд
               </div>
             )}
           </div>
@@ -201,6 +122,9 @@ function TodaySplash({ day, streak, todayDone, onDone, onClose }) {
   )
 }
 
+// ============================================================
+// План внутри сообщения чата
+// ============================================================
 function PlanInMessage({ plan, tips, recovery }) {
   const [activeTab, setActiveTab] = useState('plan')
   const [activeDay, setActiveDay] = useState(0)
@@ -210,6 +134,7 @@ function PlanInMessage({ plan, tips, recovery }) {
   if (!days?.length) return null
 
   const day = days[activeDay]
+  const mainTabs = [['plan', 'Тренировки'], ['tips', 'Питание'], ['recovery', 'Восстановление']]
 
   return (
     <div className={styles.planCard}>
@@ -217,7 +142,7 @@ function PlanInMessage({ plan, tips, recovery }) {
       <div className={styles.planCardTitle}>// ТВОЙ ПЛАН</div>
 
       <div className={styles.planMainTabs}>
-        {[['plan', 'Тренировки'], ['tips', 'Питание'], ['recovery', 'Восстановление']].map(([key, label]) => (
+        {mainTabs.map(([key, label]) => (
           <button
             key={key}
             className={`${styles.planMainTab} ${activeTab === key ? styles.planMainTabActive : ''}`}
@@ -289,6 +214,49 @@ function PlanInMessage({ plan, tips, recovery }) {
   )
 }
 
+// ============================================================
+// Утилиты состояния чата
+// ============================================================
+
+// Парсит блок ПЛАН_СТАРТ/ПЛАН_КОНЕЦ из ответа AI
+function extractPlanFromReply(reply) {
+  if (!reply.includes('ПЛАН_СТАРТ')) return { plan: null, clean: reply }
+
+  const start = reply.indexOf('ПЛАН_СТАРТ') + 'ПЛАН_СТАРТ'.length
+  const end = reply.indexOf('ПЛАН_КОНЕЦ')
+
+  let plan = null
+  if (end > start) {
+    try { plan = JSON.parse(reply.slice(start, end).trim()) } catch {}
+  }
+  const clean = reply.replace(/ПЛАН_СТАРТ[\s\S]*?ПЛАН_КОНЕЦ/g, '').trim()
+  return { plan, clean }
+}
+
+function buildPendingWelcome(planData) {
+  const todayDay = getTodayPlan(planData.plan)
+  return {
+    role: 'assistant',
+    content: `Готово! Вот твой план на ${planData.plan?.length || 0} дней под цель "${planData.form.goal}".${todayDay ? ` Сегодня у тебя: ${todayDay.focus}.` : ''} Пиши если есть вопросы.`,
+    plan: planData.plan,
+    timestamp: Date.now()
+  }
+}
+
+function buildFirstWelcome(planData) {
+  const todayDay = planData ? getTodayPlan(planData.plan) : null
+  return {
+    role: 'assistant',
+    content: planData
+      ? `Привет! Вижу твою цель — ${planData.form?.goal || 'тренировки'}.${todayDay ? ` Сегодня: ${todayDay.focus}. Готов?` : ' Как последняя тренировка?'}`
+      : 'Привет! Я FORGE — твой персональный тренер. Расскажи о себе: цель, возраст, оборудование?',
+    timestamp: Date.now()
+  }
+}
+
+// ============================================================
+// Главный компонент
+// ============================================================
 export default function Chat() {
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
@@ -308,145 +276,155 @@ export default function Chat() {
   const inputRef = useRef(null)
   const planDataRef = useRef(null)
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
   const anonCount = messages.filter(m => m.role === 'user').length
 
+  // -----------------------------------------------
+  // Инициализация — разбита на отдельные функции
+  // -----------------------------------------------
+
+  // Обработка свежесозданного плана из Generate (через localStorage)
+  const handlePendingPlan = async (pending) => {
+    const { form, plan } = JSON.parse(pending)
+    const pd = { form, plan: plan?.week_plan || plan }
+    planDataRef.current = pd
+    setPlanData(pd)
+
+    if (user) {
+      await setDoc(doc(db, 'plans', user.uid), {
+        plan: pd.plan, form: pd.form, createdAt: new Date().toISOString()
+      })
+
+      // Параллельно подтягиваем tips и recovery в фоне
+      Promise.all([
+        fetchTipsRaw({
+          gender: pd.form.gender, age: pd.form.age, weight: pd.form.weight,
+          goal: pd.form.goal, level: pd.form.level, plan: JSON.stringify(pd.plan)
+        }),
+        fetchRecoveryRaw({ age: pd.form.age, goal: pd.form.goal, level: pd.form.level })
+      ]).then(([tipsRes, recoveryRes]) => {
+        const updatedPd = { ...pd, tips: tipsRes.data?.tips, recovery: recoveryRes.data?.tips }
+        planDataRef.current = updatedPd
+        setPlanData(updatedPd)
+        return setDoc(doc(db, 'plans', user.uid), { ...updatedPd, createdAt: new Date().toISOString() })
+      }).catch(console.error)
+    }
+
+    const welcomeMsg = buildPendingWelcome(pd)
+    const msgs = [welcomeMsg]
+    setMessages(msgs)
+    if (user) await setDoc(doc(db, 'chats', user.uid), { messages: msgs }, { merge: true })
+    else localStorage.setItem('forge_chat', JSON.stringify(msgs))
+  }
+
+  // Чат для авторизованного — план/чат/streak из Firestore
+  const loadAuthenticatedChat = async () => {
+    // Миграция чата при только что состоявшейся регистрации
+    const migrated = localStorage.getItem('forge_chat_migrate')
+    if (migrated) {
+      localStorage.removeItem('forge_chat_migrate')
+      try {
+        const migratedMsgs = JSON.parse(migrated)
+        if (migratedMsgs.length > 0) {
+          setMessages(migratedMsgs)
+          await setDoc(doc(db, 'chats', user.uid), { messages: migratedMsgs }, { merge: true })
+          return
+        }
+      } catch {}
+    }
+
+    const [planSnap, chatSnap, streakSnap] = await Promise.all([
+      getDoc(doc(db, 'plans', user.uid)),
+      getDoc(doc(db, 'chats', user.uid)),
+      getDoc(doc(db, 'streaks', user.uid))
+    ])
+
+    // Streak
+    let alreadyDone = false
+    if (streakSnap.exists()) {
+      const dates = streakSnap.data().dates || []
+      setStreak(calcStreak(dates))
+      alreadyDone = dates.includes(today)
+      setTodayDone(alreadyDone)
+    }
+
+    // План
+    if (planSnap.exists()) {
+      const pd = planSnap.data()
+      planDataRef.current = pd
+      setPlanData(pd)
+
+      const todayDay = getTodayPlan(pd.plan)
+      // Сплеш показываем только если тренировка ещё не отмечена сделанной.
+      // Раньше показывался при каждом заходе на /chat, даже после нажатия "Сделал".
+      if (todayDay && !alreadyDone) {
+        setTodayWorkout(todayDay)
+        setShowSplash(true)
+      }
+    }
+
+    // Сообщения
+    if (chatSnap.exists() && chatSnap.data().messages?.length > 0) {
+      setMessages(chatSnap.data().messages.slice(-CHAT_HISTORY_LIMIT))
+    } else {
+      const pd = planSnap.exists() ? planSnap.data() : null
+      setMessages([buildFirstWelcome(pd)])
+    }
+  }
+
+  // Чат для анонима — только localStorage
+  const loadAnonymousChat = () => {
+    const saved = localStorage.getItem('forge_chat')
+    if (saved) {
+      try {
+        setMessages(JSON.parse(saved))
+        return
+      } catch {}
+    }
+    setMessages([buildFirstWelcome(null)])
+  }
+
   useEffect(() => {
-    if (authLoading) return
-    if (initialized) return
+    if (authLoading || initialized) return
     setInitialized(true)
 
     const init = async () => {
-      const pending = localStorage.getItem('forge_pending')
-      if (pending) {
-        localStorage.removeItem('forge_pending')
-        try {
-          const { form, plan } = JSON.parse(pending)
-          const pd = { form, plan: plan?.week_plan || plan }
-          planDataRef.current = pd
-          setPlanData(pd)
-
-          if (user) {
-            await setDoc(doc(db, 'plans', user.uid), {
-              plan: pd.plan, form: pd.form, createdAt: new Date().toISOString()
-            })
-            Promise.all([
-              fetch(`${BACKEND}/tips`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  gender: pd.form.gender, age: pd.form.age, weight: pd.form.weight,
-                  goal: pd.form.goal, level: pd.form.level, plan: JSON.stringify(pd.plan)
-                })
-              }).then(r => r.json()),
-              fetch(`${BACKEND}/recovery`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ age: pd.form.age, goal: pd.form.goal, level: pd.form.level })
-              }).then(r => r.json())
-            ]).then(([tipsRes, recoveryRes]) => {
-              const updatedPd = { ...pd, tips: tipsRes.data?.tips, recovery: recoveryRes.data?.tips }
-              planDataRef.current = updatedPd
-              setPlanData(updatedPd)
-              setDoc(doc(db, 'plans', user.uid), { ...updatedPd, createdAt: new Date().toISOString() })
-            }).catch(console.error)
-          }
-
-          const todayDay = getTodayPlan(pd.plan)
-          const welcomeMsg = {
-            role: 'assistant',
-            content: `Готово! Вот твой план на ${pd.plan?.length || 0} дней под цель "${form.goal}".${todayDay ? ` Сегодня у тебя: ${todayDay.focus}.` : ''} Пиши если есть вопросы.`,
-            plan: pd.plan,
-            timestamp: Date.now()
-          }
-          const msgs = [welcomeMsg]
-          setMessages(msgs)
-          if (user) await setDoc(doc(db, 'chats', user.uid), { messages: msgs }, { merge: true })
-          else localStorage.setItem('forge_chat', JSON.stringify(msgs))
+      try {
+        const pending = localStorage.getItem('forge_pending')
+        if (pending) {
+          localStorage.removeItem('forge_pending')
+          await handlePendingPlan(pending)
           return
-        } catch (e) { console.error(e) }
-      }
-
-      if (user) {
-        const migrated = localStorage.getItem('forge_chat_migrate')
-        if (migrated) {
-          localStorage.removeItem('forge_chat_migrate')
-          try {
-            const migratedMsgs = JSON.parse(migrated)
-            if (migratedMsgs.length > 0) {
-              setMessages(migratedMsgs)
-              await setDoc(doc(db, 'chats', user.uid), { messages: migratedMsgs }, { merge: true })
-              return
-            }
-          } catch {}
         }
 
-        const [planSnap, chatSnap, streakSnap] = await Promise.all([
-          getDoc(doc(db, 'plans', user.uid)),
-          getDoc(doc(db, 'chats', user.uid)),
-          getDoc(doc(db, 'streaks', user.uid))
-        ])
-
-        let currentStreak = 0
-        let alreadyDone = false
-
-        if (streakSnap.exists()) {
-          const dates = streakSnap.data().dates || []
-          currentStreak = calcStreak(dates)
-          alreadyDone = dates.includes(today)
-          setStreak(currentStreak)
-          setTodayDone(alreadyDone)
-        }
-
-        if (planSnap.exists()) {
-          planDataRef.current = planSnap.data()
-          setPlanData(planSnap.data())
-
-          const todayDay = getTodayPlan(planSnap.data().plan)
-          if (todayDay) {
-            setTodayWorkout(todayDay)
-            setShowSplash(true)
-          }
-        }
-
-        if (chatSnap.exists() && chatSnap.data().messages?.length > 0) {
-          setMessages(chatSnap.data().messages.slice(-50))
+        if (user) {
+          await loadAuthenticatedChat()
         } else {
-          const pd = planSnap.exists() ? planSnap.data() : null
-          const todayDay = pd ? getTodayPlan(pd.plan) : null
-          const welcome = {
-            role: 'assistant',
-            content: pd
-              ? `Привет! Вижу твою цель — ${pd.form?.goal || 'тренировки'}.${todayDay ? ` Сегодня: ${todayDay.focus}. Готов?` : ' Как последняя тренировка?'}`
-              : 'Привет! Я FORGE — твой персональный тренер. Расскажи о себе: цель, возраст, оборудование?',
-            timestamp: Date.now()
-          }
-          setMessages([welcome])
+          loadAnonymousChat()
         }
-      } else {
-        const saved = localStorage.getItem('forge_chat')
-        if (saved) {
-          try { setMessages(JSON.parse(saved)) } catch {}
-        } else {
-          setMessages([{
-            role: 'assistant',
-            content: 'Привет! Я FORGE — твой персональный тренер. Расскажи о себе: цель, возраст, оборудование?',
-            timestamp: Date.now()
-          }])
-        }
+      } catch (e) {
+        console.error('Chat init error:', e)
       }
     }
 
     init()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, showPaywall])
 
+  // -----------------------------------------------
+  // Действия
+  // -----------------------------------------------
+
   const saveMessages = async (msgs) => {
-    if (user) await setDoc(doc(db, 'chats', user.uid), { messages: msgs }, { merge: true })
-    else localStorage.setItem('forge_chat', JSON.stringify(msgs.slice(-20)))
+    if (user) {
+      await setDoc(doc(db, 'chats', user.uid), { messages: msgs }, { merge: true })
+    } else {
+      localStorage.setItem('forge_chat', JSON.stringify(msgs.slice(-ANON_HISTORY_LIMIT)))
+    }
   }
 
   const handleTodayDone = async () => {
@@ -478,32 +456,20 @@ export default function Chat() {
       const apiMessages = newMessages.map(m => ({ role: m.role, content: m.content }))
       const currentPlan = planDataRef.current || planData
 
-      const res = await fetch(`${BACKEND}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: apiMessages,
-          userData: currentPlan?.form || null,
-          plan: currentPlan?.plan || null
-        })
+      const data = await sendChatMessage({
+        messages: apiMessages,
+        userData: currentPlan?.form || null,
+        plan: currentPlan?.plan || null,
       })
 
-      const data = await res.json()
-      let reply = data.choices?.[0]?.message?.content || ''
-      let newPlan = data.plan || null
-
-      if (!newPlan && reply.includes('ПЛАН_СТАРТ')) {
-        const start = reply.indexOf('ПЛАН_СТАРТ') + 'ПЛАН_СТАРТ'.length
-        const end = reply.indexOf('ПЛАН_КОНЕЦ')
-        if (end > start) {
-          try { newPlan = JSON.parse(reply.slice(start, end).trim()) } catch {}
-        }
-      }
-      const cleanReply = reply.replace(/ПЛАН_СТАРТ[\s\S]*?ПЛАН_КОНЕЦ/g, '').trim()
+      const reply = data.choices?.[0]?.message?.content || ''
+      // План может прийти отдельно в data.plan ИЛИ в спецблоке ПЛАН_СТАРТ/КОНЕЦ
+      const { plan: parsedPlan, clean: cleanReply } = extractPlanFromReply(reply)
+      const newPlan = data.plan || parsedPlan
 
       const assistantMsg = {
         role: 'assistant',
-        content: cleanReply || '',
+        content: cleanReply,
         plan: newPlan ? (newPlan.week_plan || newPlan) : null,
         timestamp: Date.now()
       }
@@ -514,14 +480,21 @@ export default function Chat() {
 
       if (newPlan && user) {
         const days = newPlan.week_plan || newPlan
-        const pd = { ...planData, plan: days }
+        // Применяем новые goal/level из ответа AI если они пришли.
+        // Раньше form никогда не обновлялся → цель в Profile оставалась старой.
+        const updatedForm = {
+          ...planData?.form,
+          ...(newPlan.goal && { goal: newPlan.goal }),
+          ...(newPlan.level && { level: newPlan.level }),
+        }
+        const pd = { ...planData, plan: days, form: updatedForm }
         planDataRef.current = pd
         setPlanData(pd)
         await setDoc(doc(db, 'plans', user.uid), { ...pd, createdAt: new Date().toISOString() })
       }
 
       if (!user && updatedMessages.filter(m => m.role === 'user').length >= FREE_LIMIT) {
-        setTimeout(() => setShowPaywall(true), 800)
+        setTimeout(() => setShowPaywall(true), PAYWALL_DELAY_MS)
       }
     } catch (e) {
       console.error(e)
@@ -540,6 +513,10 @@ export default function Chat() {
     localStorage.setItem('forge_chat_migrate', JSON.stringify(messages))
     navigate('/register')
   }
+
+  // -----------------------------------------------
+  // Рендер
+  // -----------------------------------------------
 
   if (authLoading || !initialized) return (
     <div className={styles.loadingPage}>
@@ -581,7 +558,14 @@ export default function Chat() {
             {msg.role === 'assistant' && <div className={styles.msgAvatar}>F</div>}
             <div className={styles.msgBubble}>
               {msg.content && <div className={styles.msgText}>{msg.content}</div>}
-              {msg.plan && <PlanInMessage plan={msg.plan} tips={planData?.tips} recovery={planData?.recovery} key={`${planData?.tips?.length}-${planData?.recovery?.length}`} />}
+              {msg.plan && (
+                <PlanInMessage
+                  plan={msg.plan}
+                  tips={planData?.tips}
+                  recovery={planData?.recovery}
+                  key={`${planData?.tips?.length}-${planData?.recovery?.length}`}
+                />
+              )}
               <div className={styles.msgTime}>
                 {new Date(msg.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
               </div>

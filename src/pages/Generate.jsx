@@ -4,19 +4,24 @@ import { useAuth } from '../hooks/useAuth'
 import { generatePlan } from '../api/forge'
 import styles from './Generate.module.css'
 import Header from '../components/Header'
-import { validateBody } from '../utils/validate'
+import { validateBody, BODY_LIMITS } from '../utils/validate'
 
-const GOALS = ['Набор массы', 'Сила', 'Рельеф', 'Выносливость', 'Похудение', ]
+const GOALS = ['Набор массы', 'Сила', 'Рельеф', 'Выносливость', 'Похудение']
 const LEVELS = ['Новичок', 'Средний', 'Продвинутый']
 const EQUIPMENT_HINTS = ['Только тело', 'Турник', 'Брусья', 'Гантели', 'Штанга', 'Скакалка', 'Тренажёры']
+
+const NUM_FIELDS = [
+  { label: 'ВОЗРАСТ', key: 'age',    placeholder: '20',  unit: 'лет', ...BODY_LIMITS.age },
+  { label: 'ВЕС',     key: 'weight', placeholder: '70',  unit: 'кг',  ...BODY_LIMITS.weight },
+  { label: 'РОСТ',    key: 'height', placeholder: '175', unit: 'см',  ...BODY_LIMITS.height },
+]
 
 function validate(form) {
   const errors = {}
 
   if (!form.gender) errors.gender = 'Выбери пол'
 
-  const bodyErrors = validateBody(form.age, form.weight, form.height)
-  Object.assign(errors, bodyErrors)
+  Object.assign(errors, validateBody(form))
 
   if (!form.goal) errors.goal = 'Выбери цель'
   if (!form.level) errors.level = 'Выбери уровень'
@@ -27,7 +32,7 @@ function validate(form) {
 }
 
 export default function Generate() {
-  const { user } = useAuth()
+  useAuth()
   const navigate = useNavigate()
 
   const [form, setForm] = useState({
@@ -58,15 +63,18 @@ export default function Generate() {
     setSubmitted(true)
 
     const errs = validate(form)
-    setErrors(errs)
 
     if (Object.keys(errs).length > 0) {
+      // Показываем И ошибки полей, И глобальное сообщение если данные нереальны
       if (errs._absurd) {
-        setErrors({ _global: '🤨 Данные выглядят нереально. Перепроверь рост, вес и возраст.' })
+        setErrors({ ...errs, _global: '🤨 Данные выглядят нереально. Перепроверь рост, вес и возраст.' })
+      } else {
+        setErrors(errs)
       }
       return
     }
 
+    setErrors({})
     setLoadingPlan(true)
 
     const payload = {
@@ -100,8 +108,6 @@ export default function Generate() {
     setLoadingPlan(false)
   }
 
-  const hasErrors = Object.keys(errors).length > 0
-
   return (
     <div className={styles.page}>
       <Header variant="generate" />
@@ -133,11 +139,7 @@ export default function Generate() {
 
             {/* ЦИФРЫ */}
             <div className={styles.numRow}>
-              {[
-                { label: 'ВОЗРАСТ', key: 'age', placeholder: '20', unit: 'лет', min: 10, max: 80 },
-                { label: 'ВЕС', key: 'weight', placeholder: '70', unit: 'кг', min: 30, max: 200 },
-                { label: 'РОСТ', key: 'height', placeholder: '175', unit: 'см', min: 120, max: 220 },
-              ].map(f => (
+              {NUM_FIELDS.map(f => (
                 <div key={f.key} className={styles.numField}>
                   <div className={styles.fieldLabel}>{f.label}</div>
                   <div className={`${styles.numInputWrap} ${errors[f.key] ? styles.inputError : ''}`}>
@@ -244,7 +246,7 @@ export default function Generate() {
               />
             </div>
 
-            {submitted && hasErrors && errors._global && (
+            {submitted && errors._global && (
               <div className={styles.globalError}>{errors._global}</div>
             )}
 

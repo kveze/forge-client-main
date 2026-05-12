@@ -75,13 +75,13 @@
 .profilePills { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .profilePill {
-padding: 3px 10px;
-    background: rgba(255, 45, 45, 0.08);
-    border: 1px solid rgba(255, 45, 45, 0.2);
-    border-radius: 8px;
-    font-size: 13px;
-    color: #ff7e7e;
-    font-weight: 500;
+  padding: 3px 10px;
+  background: rgba(255, 45, 45, 0.08);
+  border: 1px solid rgba(255, 45, 45, 0.2);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #ff7e7e;
+  font-weight: 500;
 }
 
 .streakBadge {
@@ -133,8 +133,9 @@ padding: 3px 10px;
 
 /* Edit form */
 .editGrid {
-  display: grid; grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .editField { display: flex; flex-direction: column; gap: 6px; }
@@ -152,20 +153,13 @@ padding: 3px 10px;
 }
 .editInputWrap:focus-within { border-color: #FF2D2D; }
 
-.editInput {
-  flex: 1; background: transparent; border: none;
-  color: #F0EDE8; font-size: 16px; font-weight: 700;
-  padding: 10px 10px; outline: none; width: 100%;
-  font-family: 'DM Sans', sans-serif;
-}
-
 .editUnit {
   font-size: 10px; color: #444; padding: 0 8px;
   font-family: 'DM Mono', monospace; white-space: nowrap;
 }
 
 .saveEditBtn {
-  grid-column: 1 / -1;
+  width: 100%;
   padding: 14px; background: #FF2D2D;
   border: none; border-radius: 10px; color: white;
   font-size: 14px; font-weight: 700; cursor: pointer;
@@ -214,14 +208,34 @@ padding: 3px 10px;
 .planText { white-space: pre-wrap; }
 .dayHL { color: #FF2D2D; font-weight: 600; }
 
-.tipsList { display: flex; flex-direction: column; }
+.tipsList { display: flex; flex-direction: column; gap: 8px; }
+
 .tipItem {
-  display: flex; gap: 14px; align-items: flex-start;
-  padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-  font-size: 12px; line-height: 1.7;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  background: linear-gradient(15deg, rgba(255,45,45,0.06) 0%, #141414 100%);
+  border: 1px solid rgba(255,45,45,0.12);
+  border-left: 3px solid #FF2D2D;
+  border-radius: 0 12px 12px 0;
+  transition: all 0.2s;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #D8D5D0;
+  position: relative;
+  overflow: hidden;
 }
-.tipItem:last-child { border-bottom: none; padding-bottom: 0; }
-.tipNum { font-size: 20px; font-weight: 800; color: #FF2D2D; flex-shrink: 0; line-height: 1; min-width: 22px; }
+
+.tipNum {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  color: #FF2D2D;
+  line-height: 1;
+  flex-shrink: 0;
+  min-width: 28px;
+  opacity: 0.6;
+}
 
 .noContent { font-size: 12px; color: #555; text-align: center; padding: 20px 0; }
 
@@ -256,6 +270,8 @@ padding: 3px 10px;
   margin-top: 8px;
 }
 .logoutBtn:hover { border-color: #FF2D2D; color: #FF2D2D; }
+
+/* Chips */
 .btnRow { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .chip {
@@ -265,14 +281,13 @@ padding: 3px 10px;
   border-radius: 8px;
   color: #888; font-size: 13px;
   cursor: pointer; transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
 }
 .chip:hover { border-color: rgba(255,255,255,0.15); color: #F0EDE8; }
 .chipActive { border-color: #FF2D2D; color: #F0EDE8; background: rgba(255,45,45,0.08); }
-/* Добавь в конец Profile.module.css */
 
-.editInputError {
-  border-color: #FF2D2D !important;
-}
+/* Edit input errors */
+.editInputError { border-color: #FF2D2D !important; }
 
 .editError {
   font-family: 'DM Mono', monospace;
@@ -288,21 +303,7 @@ padding: 3px 10px;
   75% { transform: translateX(4px); }
 }
 
-.btnRow { display: flex; flex-wrap: wrap; gap: 6px; }
-
-.chip {
-  padding: 7px 14px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px;
-  color: #888; font-size: 13px;
-  cursor: pointer; transition: all 0.2s;
-  font-family: 'DM Sans', sans-serif;
-}
-.chip:hover { border-color: rgba(255,255,255,0.15); color: #F0EDE8; }
-.chipActive { border-color: #FF2D2D; color: #F0EDE8; background: rgba(255,45,45,0.08); }
-
-/* Модалка пересоздания плана */
+/* Replan modal */
 .modalOverlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.7);
@@ -350,3 +351,44 @@ padding: 3px 10px;
   transition: all 0.2s; font-family: 'DM Sans', sans-serif;
 }
 .replanNo:hover { border-color: rgba(255,255,255,0.15); color: #F0EDE8; }
+
+/* Edit inputs (объединённые правила: и input, и textarea) */
+input.editInput,
+textarea.editInput {
+  width: 100%;
+  background: #1A1A1A;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #F0EDE8;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+textarea.editInput {
+  resize: none;
+  font-weight: 400;
+}
+
+input.editInput:focus,
+textarea.editInput:focus {
+  border-color: #FF2D2D;
+}
+
+/* Input inside editInputWrap (used in dataCard edit mode) */
+.editInputWrap .editInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #F0EDE8;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 10px 10px;
+  outline: none;
+  width: 100%;
+  font-family: 'DM Sans', sans-serif;
+}

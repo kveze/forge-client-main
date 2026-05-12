@@ -11,6 +11,7 @@
   backdrop-filter: blur(16px);
 }
 
+
 .logo {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 24px;
@@ -45,7 +46,7 @@
 
 .accentBtn {
   padding: 8px 16px;
-  background: #FF2D2D;
+  background: #b43b16e8;
   border: none;
   border-radius: 8px;
   color: white;

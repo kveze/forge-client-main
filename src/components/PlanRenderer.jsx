@@ -1,66 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import VideoModal from './VideoModal'
 import styles from './PlanRenderer.module.css'
-
-function VideoModal({ exerciseName, onClose }) {
-  const [videoId, setVideoId] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const KEY = import.meta.env.VITE_YOUTUBE_KEY
-
-  useEffect(() => {
-    const query = encodeURIComponent(`${exerciseName} техника выполнения`)
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&type=video&maxResults=5&videoDuration=short&key=${KEY}`
-
-    fetch(searchUrl)
-      .then(r => r.json())
-      .then(async data => {
-        const items = data.items || []
-        if (!items.length) { setVideoId(null); return }
-
-        // Берём IDs и проверяем длительность
-        const ids = items.map(i => i.id.videoId).join(',')
-        const detailUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${KEY}`
-        const detailRes = await fetch(detailUrl).then(r => r.json())
-
-        // Ищем видео до 90 секунд
-        const short = detailRes.items?.find(v => {
-          const dur = v.contentDetails.duration
-          const match = dur.match(/PT(?:(\d+)M)?(?:(\d+)S)?/)
-          const mins = parseInt(match?.[1] || 0)
-          const secs = parseInt(match?.[2] || 0)
-          return mins === 0 && secs <= 90
-        })
-
-        // Если не нашли короткое — берём первое
-        setVideoId(short?.id || items[0]?.id?.videoId || null)
-      })
-      .catch(() => setVideoId(null))
-      .finally(() => setLoading(false))
-  }, [])
-
-  return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <span className={styles.modalTitle}>{exerciseName}</span>
-          <button className={styles.modalClose} onClick={onClose}>✕</button>
-        </div>
-        <div className={styles.modalBody}>
-          {loading && <div className={styles.modalLoading}>// ЗАГРУЗКА...</div>}
-          {!loading && !videoId && <div className={styles.modalLoading}>// ВИДЕО НЕ НАЙДЕНО</div>}
-          {!loading && videoId && (
-            <iframe
-              className={styles.videoFrame}
-              src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 
 function DayView({ day }) {
   const [activeVideo, setActiveVideo] = useState(null)

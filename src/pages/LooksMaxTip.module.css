@@ -332,69 +332,6 @@
   font-size: 10px; color: #444; letter-spacing: 1px;
 }
 
-/* СЛАЙДЕР */
-.slider {
-  position: relative;
-  width: 100%; aspect-ratio: 1;
-  border-radius: 14px; overflow: hidden;
-  cursor: col-resize;
-  user-select: none;
-  border: 1px solid rgba(255,255,255,0.07);
-}
-
-.sliderImg {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover;
-}
-
-.sliderAfter {
-  position: absolute; top: 0; left: 0;
-  height: 100%; overflow: hidden;
-  min-width: 0;
-}
-
-.sliderAfter .sliderImg { position: absolute; left: 0; }
-
-.sliderHandle {
-  position: absolute; top: 0; bottom: 0;
-  transform: translateX(-50%);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  pointer-events: none;
-}
-
-.sliderLine {
-  position: absolute; top: 0; bottom: 0;
-  width: 2px; background: white;
-  box-shadow: 0 0 8px rgba(0,0,0,0.5);
-}
-
-.sliderCircle {
-  width: 36px; height: 36px;
-  background: white; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; color: #333;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
-  position: relative; z-index: 1;
-}
-
-.sliderLabelLeft {
-  position: absolute; left: 12px; top: 12px;
-  font-family: 'DM Mono', monospace;
-  font-size: 10px; letter-spacing: 2px;
-  color: white; background: rgba(0,0,0,0.5);
-  padding: 4px 10px; border-radius: 100px;
-}
-
-.sliderLabelRight {
-  position: absolute; right: 12px; top: 12px;
-  font-family: 'DM Mono', monospace;
-  font-size: 10px; letter-spacing: 2px;
-  color: #4ade80; background: rgba(0,0,0,0.5);
-  padding: 4px 10px; border-radius: 100px;
-}
-
 /* DISCLAIMER */
 .disclaimer {
   font-family: 'DM Mono', monospace;

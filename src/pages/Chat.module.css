@@ -32,7 +32,7 @@
   50% { opacity: 1; transform: scale(1.2); }
 }
 
-/* HEADER — как в Profile */
+/* HEADER */
 .header {
   display: flex;
   align-items: center;
@@ -199,7 +199,7 @@
   font-size: 10px; color: rgba(255,255,255,0.15); letter-spacing: 0.5px;
 }
 
-/* PLAN CARD — как карточки профиля */
+/* PLAN CARD */
 .planCard {
   background: #141414;
   border: 1px solid rgba(255,255,255,0.07);
@@ -222,6 +222,28 @@
   width: 6px; height: 6px;
   background: #FF2D2D; border-radius: 50%; flex-shrink: 0;
 }
+
+.planMainTabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.planMainTab {
+  flex: 1;
+  padding: 11px 8px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: #555;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.planMainTab:hover { color: #F0EDE8; }
+.planMainTabActive { color: #FF2D2D; border-bottom-color: #FF2D2D; }
 
 .planTabs {
   display: flex;
@@ -259,23 +281,42 @@
 .planExName { font-size: 14px; font-weight: 700; color: #F0EDE8; }
 
 .planWatchBtn {
-    padding: 3px 10px;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    /* border-radius: 4px; */
-    color: #a14444;
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 1px;
-    cursor: pointer;
-    transition: all 0.18s;
-    white-space: nowrap;
-    flex-shrink: 0;
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #a14444;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .planWatchBtn:hover { border-color: #FF2D2D; color: #FF2D2D; }
 
 .planExMeta { display: flex; gap: 14px; font-family: 'DM Mono', monospace; font-size: 11px; color: #555; }
 .planExNotes { font-family: 'DM Mono', monospace; font-size: 11px; color: rgba(255,45,45,0.6); }
+
+.tipItem {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 13px;
+  line-height: 1.6;
+  color: #D8D5D0;
+}
+.tipItem:last-child { border-bottom: none; }
+.tipNum {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  color: #FF2D2D;
+  flex-shrink: 0;
+  line-height: 1;
+  min-width: 20px;
+}
 
 /* TYPING */
 .typing {
@@ -382,43 +423,6 @@
 .sendBtn:hover { opacity: 0.9; transform: scale(1.05); }
 .sendBtn:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
 
-/* YouTube модалка */
-.modalOverlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.85);
-  z-index: 1000;
-  display: flex; align-items: center; justify-content: center;
-  backdrop-filter: blur(6px);
-}
-
-.modal {
-  background: #141414;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px; width: 90%; max-width: 680px;
-  overflow: hidden;
-}
-
-.modalHeader {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.07);
-}
-
-.modalTitle { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; }
-
-.modalClose {
-  background: transparent; border: none;
-  color: #555; font-size: 16px; cursor: pointer; transition: color 0.2s;
-}
-.modalClose:hover { color: #F0EDE8; }
-
-.modalLoading {
-  padding: 40px; text-align: center;
-  font-family: 'DM Mono', monospace; font-size: 11px;
-  color: #555; letter-spacing: 2px;
-}
-
-.videoFrame { width: 100%; height: 360px; border: none; display: block; }
-
 @media (max-width: 640px) {
   .header { padding: 12px 16px; }
   .msg { padding: 14px 16px; gap: 10px; }
@@ -427,7 +431,6 @@
   .msgUser .msgText { max-width: 88%; }
   .planCard { max-width: 100%; }
 }
-
 
 /* Streak в хедере */
 .streakBadge {
@@ -493,9 +496,8 @@
   border-top: 1px solid rgba(255,255,255,0.07);
 }
 
-
 /* ═══════════════════════════════
-   TODAY SPLASH — BOMB DESIGN
+   TODAY SPLASH
 ═══════════════════════════════ */
 
 .splash {
@@ -525,7 +527,6 @@
   to { opacity: 0; transform: scale(0.98); }
 }
 
-/* Красный glow сверху */
 .splashGlow {
   position: fixed;
   top: -120px;
@@ -537,7 +538,6 @@
   pointer-events: none;
 }
 
-/* Основной контент */
 .splashContent {
   width: 100%;
   max-width: 520px;
@@ -554,7 +554,6 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Шапка */
 .splashTop {
   display: flex;
   flex-direction: column;
@@ -592,7 +591,6 @@
   margin-top: 4px;
 }
 
-/* Упражнения */
 .splashExercises {
   display: flex;
   flex-direction: column;
@@ -638,7 +636,7 @@
   flex: 1;
   min-width: 0;
 }
-/* da */
+
 .splashWatchBtn {
   padding: 4px 10px;
   background: transparent;
@@ -670,7 +668,6 @@
   line-height: 1.5;
 }
 
-/* Кнопки */
 .splashBtns {
   display: flex;
   flex-direction: column;
@@ -797,47 +794,4 @@
   .splashStreakNum { font-size: 80px; }
   .splashFireBig { font-size: 64px; }
   .splashDoneBtn { padding: 16px; font-size: 15px; }
-
-
-}
-.planMainTabs {
-  display: flex;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-}
-
-.planMainTab {
-  flex: 1;
-  padding: 11px 8px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  color: #555;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.planMainTab:hover { color: #F0EDE8; }
-.planMainTabActive { color: #FF2D2D; border-bottom-color: #FF2D2D; }
-
-.tipItem {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  font-size: 13px;
-  line-height: 1.6;
-  color: #D8D5D0;
-}
-.tipItem:last-child { border-bottom: none; }
-.tipNum {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 20px;
-  color: #FF2D2D;
-  flex-shrink: 0;
-  line-height: 1;
-  min-width: 20px;
 }

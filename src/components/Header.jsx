@@ -39,6 +39,14 @@ const VARIANTS = {
       { label: 'Регистрация', to: '/register', show: (user) => !user, accent: true },
     ]
   },
+  looksmax: {
+    right: [
+      { label: 'Профиль', to: '/profile', show: (user) => !!user },
+      { label: '💬 Тренер', to: '/chat', show: (user) => !!user, accent: true },
+      { label: 'Войти', to: '/login', show: (user) => !user },
+      { label: 'Регистрация', to: '/register', show: (user) => !user, accent: true },
+    ]
+  },
   default: {
     right: [
       { label: 'Мой профиль', to: '/profile', show: (user) => !!user },
